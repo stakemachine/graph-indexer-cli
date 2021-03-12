@@ -14,7 +14,6 @@ issues:
       - dupl
       - gosec
       - goconst
-      - gofumpt
 linters:
   enable:
     - golint
@@ -26,6 +25,13 @@ linters:
     - gocritic
     - errorlint
     - gofumpt
+    - deadcode
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - varcheck
+    - staticcheck
 linters-settings:
   errcheck:
     # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
@@ -37,3 +43,6 @@ linters-settings:
   gocyclo:
     # minimal code complexity to report, 30 by default
     min-complexity: 20
+  goconst:
+    min-len: 3 # minimum length of string constant
+    min-occurrences: 6 # minimum number of occurrences
