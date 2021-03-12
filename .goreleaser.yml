@@ -21,6 +21,29 @@ builds:
     ldflags:
       - -s -w
 
+dockers:
+  - # GOOS of the built binary that should be used.
+    goos: linux
+    goarch: amd64
+
+    # Name templates of the built binaries that should be used.
+    ids: ["graph-indexer-cli"]
+
+    # Templates of the Docker image names.
+    image_templates:
+      - "ghcr.io/stakemachine/graph-indexer-cli:{{ .Tag }}"
+      - "ghcr.io/stakemachine/graph-indexer-cli:latest"
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+
+    # Path to the Dockerfile (from the project root).
+    dockerfile: Dockerfile
+
 archives:
   - # Replacements for GOOS and GOARCH in the archive name.
     replacements:
