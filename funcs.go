@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -178,7 +179,9 @@ func setRule(ctx context.Context, agentHost string, deploymentID string, args []
 			if err != nil {
 				return err
 			}
-			variables[i] = graphql.Int(parallelAllocations)
+			if parallelAllocations > 0 && parallelAllocations <= math.MaxInt32 {
+				variables[i] = graphql.Int(int32(parallelAllocations))
+			}
 		case "allocationAmount":
 			variables[i] = graphql.String(p) + "000000000000000000"
 		default:
