@@ -43,7 +43,7 @@ dockers:
       - --label=org.opencontainers.image.licenses=MIT
 
     # Path to the Dockerfile (from the project root).
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
 
 archives:
   - # Replacements for GOOS and GOARCH in the archive name.
