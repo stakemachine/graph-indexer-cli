@@ -33,6 +33,7 @@ dockers:
     image_templates:
       - "ghcr.io/stakemachine/graph-indexer-cli:{{ .Tag }}"
       - "ghcr.io/stakemachine/graph-indexer-cli:latest"
+    use_buildx: true
     build_flag_templates:
       - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
