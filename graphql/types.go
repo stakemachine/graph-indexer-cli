@@ -59,3 +59,19 @@ type Status struct {
 	}
 	IndexingRules []IndexingRule
 }
+
+type Allocation struct {
+	ID                 string
+	SubgraphDeployment struct {
+		ID           string
+		OriginalName string
+	}
+	CreatedAtEpoch  int
+	AllocatedTokens string
+}
+
+type Indexer struct {
+	StakedTokens    string
+	AllocatedTokens string
+	AvailableStake  string
+}

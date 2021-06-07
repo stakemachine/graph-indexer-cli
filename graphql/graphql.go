@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/shurcooL/graphql"
 	"github.com/stakemachine/graph-indexer-cli/utils"
@@ -101,4 +102,34 @@ func (gs *GraphService) SetModel(model CostModel) (CostModel, error) {
 		return CostModel{}, err
 	}
 	return m.CostModel, nil
+}
+
+func (gs *GraphService) GetActiveAllocations(indexer string) ([]Allocation, error) {
+	variables := map[string]interface{}{
+		"indexer": graphql.String(strings.ToLower(indexer)),
+	}
+
+	var q struct {
+		Allocations []Allocation `graphql:"allocations(first: 1000, where: {indexer:$indexer, status: Active})"`
+	}
+
+	err := gs.Client.Query(context.Background(), &q, variables)
+	if err != nil {
+		return []Allocation{}, err
+	}
+	return q.Allocations, nil
+}
+
+func (gs *GraphService) GetIndexerInfo(indexer string) (Indexer, error) {
+	variables := map[string]interface{}{
+		"indexer": graphql.String(strings.ToLower(indexer)),
+	}
+	var q struct {
+		Indexer Indexer `graphql:"indexer(id:$indexer)"`
+	}
+	err := gs.Client.Query(context.Background(), &q, variables)
+	if err != nil {
+		return Indexer{}, err
+	}
+	return q.Indexer, nil
 }

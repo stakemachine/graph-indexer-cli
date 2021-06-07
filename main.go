@@ -16,7 +16,8 @@ func main() {
 		rulesFlagSet = flag.NewFlagSet("graph-indexer rules", flag.ExitOnError)
 		/*costFlagSet   = flag.NewFlagSet("graph-indexer cost", flag.ExitOnError)
 		statusFlagSet = flag.NewFlagSet("graph-indexer status", flag.ExitOnError) */
-		agentHost = rootFlagSet.String("indexer-agent", "http://localhost:8000", "Indexer Agent Mgmt API Host")
+		agentHost       = rootFlagSet.String("indexer-agent", "http://localhost:8000", "Indexer Agent Mgmt API Host")
+		networkSubgraph = rootFlagSet.String("network-subgraph", "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-testnet", "Network Subgraph Endpoint")
 	)
 
 	status := &ffcli.Command{
@@ -24,7 +25,7 @@ func main() {
 		ShortUsage: "graph-indexer status",
 		ShortHelp:  "Check the status of an indexer",
 		Exec: func(ctx context.Context, args []string) error {
-			return status(ctx, *agentHost)
+			return status(ctx, *agentHost, *networkSubgraph)
 		},
 	}
 
