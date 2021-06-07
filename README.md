@@ -9,12 +9,16 @@ go get -u github.com/stakemachine/graph-indexer-cli
 ## How to use
 First of all you need to set ENV variable for your indexer-agent.
 ```
-export GRAPH_INDEXER_AGENT="<indexer-agent>:port"
+export GRAPH_INDEXER_AGENT="http://<indexer-agent>:port"
 ```
 
 ### Status
 ```
 graph-indexer-cli status
+```
+By default we use testnet subgraph, to see active allocations in mainnet:
+```
+export GRAPH_NETWORK_SUBGRAPH="https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-mainnet"
 ```
 
 ### Rules
