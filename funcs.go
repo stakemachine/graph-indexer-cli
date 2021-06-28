@@ -327,3 +327,29 @@ func setCostModel(agentHost string, deploymentID string, args []string) error {
 	}
 	return nil
 }
+
+func signals(ctx context.Context, networkSubgraph string) error {
+	subgraphAPI := graphql.NewClient(networkSubgraph, nil)
+	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
+	subgraphDeployments, err := subgraphAPIClient.GetSubgraphDeploymentsSignalled()
+	if err != nil {
+		return err
+	}
+	ts := table.NewWriter()
+	ts.SetOutputMirror(os.Stdout)
+	ts.AppendHeader(table.Row{"#", "Subgraph Deploymend ID", "Subgraph Original Name", "Signal Amount"})
+	for i, s := range subgraphDeployments {
+		subgraphDeploymentHash, err := utils.SubgraphHexToHash(s.ID)
+		if err != nil {
+			return err
+		}
+		ts.AppendRows([]table.Row{
+			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount},
+		})
+	}
+
+	ts.SetStyle(table.StyleLight)
+	ts.Render()
+
+	return nil
+}

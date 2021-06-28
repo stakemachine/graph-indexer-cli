@@ -144,3 +144,14 @@ func (gs *GraphService) GetCurrentEpoch() (Epoch, error) {
 	}
 	return q.CurrentEpoch, nil
 }
+
+func (gs *GraphService) GetSubgraphDeploymentsSignalled() ([]SubgraphDeployment, error) {
+	var q struct {
+		SubgraphDeployments []SubgraphDeployment `graphql:"subgraphDeployments(first:1000, where:{signalAmount_gte: 1})"`
+	}
+	err := gs.Client.Query(context.Background(), &q, nil)
+	if err != nil {
+		return []SubgraphDeployment{}, err
+	}
+	return q.SubgraphDeployments, nil
+}

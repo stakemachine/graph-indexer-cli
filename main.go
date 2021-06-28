@@ -150,10 +150,19 @@ func main() {
 		},
 	}
 
+	signals := &ffcli.Command{
+		Name:       "signals",
+		ShortUsage: "graph-indexer signals",
+		ShortHelp:  "Get list of subgraph deployments with signals",
+		Exec: func(ctx context.Context, args []string) error {
+			return signals(ctx, *networkSubgraph)
+		},
+	}
+
 	root := &ffcli.Command{
 		ShortUsage:  "graph-indexer [flags] <subcommand>",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{status, rules, cost},
+		Subcommands: []*ffcli.Command{status, rules, cost, signals},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("GRAPH")},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp

@@ -79,3 +79,9 @@ type Indexer struct {
 type Epoch struct {
 	CurrentEpoch int
 }
+
+type SubgraphDeployment struct {
+	ID           string `json:"id"`
+	OriginalName string `json:"originalName"`
+	SignalAmount string `json:"signalAmount"`
+}
