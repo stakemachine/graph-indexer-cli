@@ -133,3 +133,14 @@ func (gs *GraphService) GetIndexerInfo(indexer string) (Indexer, error) {
 	}
 	return q.Indexer, nil
 }
+
+func (gs *GraphService) GetCurrentEpoch() (Epoch, error) {
+	var q struct {
+		CurrentEpoch Epoch `graphql:"graphNetwork(id: 1)"`
+	}
+	err := gs.Client.Query(context.Background(), &q, nil)
+	if err != nil {
+		return Epoch{}, err
+	}
+	return q.CurrentEpoch, nil
+}

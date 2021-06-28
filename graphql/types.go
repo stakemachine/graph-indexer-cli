@@ -75,3 +75,7 @@ type Indexer struct {
 	AllocatedTokens string
 	AvailableStake  string
 }
+
+type Epoch struct {
+	CurrentEpoch int
+}

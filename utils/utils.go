@@ -32,7 +32,7 @@ func SubgraphHashToHex(s string) (string, error) {
 	return "0x" + strings.TrimPrefix(hex.EncodeToString(decoded), "1220"), nil
 }
 
-func ToDecimal(ivalue interface{}, decimals int) decimal.Decimal {
+func ToDecimal(ivalue interface{}, decimals int) (decimal.Decimal, error) {
 	value := new(big.Int)
 	switch v := ivalue.(type) {
 	case string:
@@ -42,17 +42,24 @@ func ToDecimal(ivalue interface{}, decimals int) decimal.Decimal {
 	}
 
 	mul := decimal.NewFromFloat(float64(10)).Pow(decimal.NewFromFloat(float64(decimals)))
-	num, _ := decimal.NewFromString(value.String())
+	num, err := decimal.NewFromString(value.String())
+	if err != nil {
+		return decimal.Decimal{}, err
+	}
 	result := num.Div(mul)
 
-	return result
+	return result, nil
 }
 
-func ToWei(iamount interface{}, decimals int) *big.Int {
+func ToWei(iamount interface{}, decimals int) (*big.Int, error) {
 	amount := decimal.NewFromFloat(0)
+	var err error
 	switch v := iamount.(type) {
 	case string:
-		amount, _ = decimal.NewFromString(v)
+		amount, err = decimal.NewFromString(v)
+		if err != nil {
+			return &big.Int{}, err
+		}
 	case float64:
 		amount = decimal.NewFromFloat(v)
 	case int64:
@@ -69,5 +76,5 @@ func ToWei(iamount interface{}, decimals int) *big.Int {
 	wei := new(big.Int)
 	wei.SetString(result.String(), 10)
 
-	return wei
+	return wei, nil
 }

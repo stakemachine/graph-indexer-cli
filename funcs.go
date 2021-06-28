@@ -38,7 +38,11 @@ func printRules(rules []mgmt.IndexingRule) error {
 		} else {
 			encoded = r.Deployment
 		}
-		ti.AppendRow(table.Row{encoded, utils.ToDecimal(r.AllocationAmount, 18), r.ParallelAllocations, r.MaxAllocationPercentage, r.MinSignal, r.MaxSignal, r.MinStake, r.MinAverageQueryFees, r.Custom, r.DecisionBasis})
+		allocationAmount, err := utils.ToDecimal(r.AllocationAmount, 18)
+		if err != nil {
+			fmt.Println("Error:", err)
+		}
+		ti.AppendRow(table.Row{encoded, allocationAmount, r.ParallelAllocations, r.MaxAllocationPercentage, r.MinSignal, r.MaxSignal, r.MinStake, r.MinAverageQueryFees, r.Custom, r.DecisionBasis})
 		ti.AppendSeparator()
 	}
 	ti.SetStyle(table.StyleLight)
@@ -91,6 +95,10 @@ func status(ctx context.Context, agentHost string, networkSubgraph string) error
 	if err != nil {
 		panic(err)
 	}
+	currentEpoch, err := subgraphAPIClient.GetCurrentEpoch()
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println("Registration")
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
@@ -114,23 +122,40 @@ func status(ctx context.Context, agentHost string, networkSubgraph string) error
 	ti := table.NewWriter()
 	ti.SetOutputMirror(os.Stdout)
 	ti.AppendHeader(table.Row{"Staked tokens", "Allocated tokens", "Available stake"})
+	stakedTokens, err := utils.ToDecimal(indexerInfo.StakedTokens, 18)
+	if err != nil {
+		panic(err)
+	}
+	allocatedTokens, err := utils.ToDecimal(indexerInfo.AllocatedTokens, 18)
+	if err != nil {
+		panic(err)
+	}
+	availableStake, err := utils.ToDecimal(indexerInfo.AvailableStake, 18)
+	if err != nil {
+		panic(err)
+	}
 	ti.AppendRows([]table.Row{
-		{utils.ToDecimal(indexerInfo.StakedTokens, 18), utils.ToDecimal(indexerInfo.AllocatedTokens, 18), utils.ToDecimal(indexerInfo.AvailableStake, 18)},
+		{stakedTokens, allocatedTokens, availableStake},
 	})
 	ti.SetStyle(table.StyleLight)
 	ti.Render()
+	fmt.Println("Current epoch:", currentEpoch.CurrentEpoch)
 	if len(allos) > 0 {
-		fmt.Println("Active allocations")
+		fmt.Printf("Active allocations (%d)\n", len(allos))
 		ta := table.NewWriter()
 		ta.SetOutputMirror(os.Stdout)
 		ta.AppendHeader(table.Row{"Allocation ID", "Subgraph Deployment ID", "Subgraph Name", "Created at Epoch", "Allocated tokens"})
 		for _, a := range allos {
-			subgraphHash, err := utils.SubgraphHexToHash(a.SubgraphDeployment.ID)
-			if err != nil {
-				panic(err)
+			subgraphHash, e := utils.SubgraphHexToHash(a.SubgraphDeployment.ID)
+			if e != nil {
+				panic(e)
+			}
+			allocatedTokens, e := utils.ToDecimal(a.AllocatedTokens, 18)
+			if e != nil {
+				panic(e)
 			}
 			ta.AppendRows([]table.Row{
-				{a.ID, subgraphHash, a.SubgraphDeployment.OriginalName, a.CreatedAtEpoch, utils.ToDecimal(a.AllocatedTokens, 18)},
+				{a.ID, subgraphHash, a.SubgraphDeployment.OriginalName, a.CreatedAtEpoch, allocatedTokens},
 			})
 		}
 		ta.SetStyle(table.StyleLight)
@@ -216,7 +241,11 @@ func setRule(ctx context.Context, agentHost string, deploymentID string, args []
 				variables[i] = graphql.Int(parallelAllocations)
 			}
 		case "allocationAmount":
-			variables[i] = graphql.String(utils.ToWei(p, 18).String())
+			allocationAmount, e := utils.ToWei(p, 18)
+			if e != nil {
+				return e
+			}
+			variables[i] = graphql.String(allocationAmount.String())
 		default:
 			variables[i] = graphql.String(p)
 		}

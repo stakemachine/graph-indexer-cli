@@ -16,7 +16,7 @@ issues:
       - goconst
 linters:
   enable:
-    - golint
+    - revive
     - gosec
     - unconvert
     - gocyclo
