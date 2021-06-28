@@ -384,3 +384,23 @@ func signals(ctx context.Context, networkSubgraph string) error {
 
 	return nil
 }
+
+func getIndexingStatuses(ctx context.Context, indexNode string) error {
+	indexNodeAPI := graphql.NewClient(indexNode, nil)
+	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
+	indexingStatuses, err := indexNodeAPIClient.GetIndexingStatuses()
+	if err != nil {
+		return err
+	}
+	tis := table.NewWriter()
+	tis.SetOutputMirror(os.Stdout)
+	tis.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Chain", "Node ID", "Latest Block", "Chain Head"})
+	for i, is := range indexingStatuses {
+		tis.AppendRows([]table.Row{
+			{i, is.Subgraph, is.Chains[0].Network, is.Node, is.Chains[0].LatestBlock.Number, is.Chains[0].ChainHeadBlock.Number},
+		})
+	}
+	tis.SetStyle(table.StyleLight)
+	tis.Render()
+	return nil
+}

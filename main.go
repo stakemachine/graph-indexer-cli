@@ -18,12 +18,23 @@ func main() {
 		statusFlagSet = flag.NewFlagSet("graph-indexer status", flag.ExitOnError) */
 		agentHost       = rootFlagSet.String("indexer-agent", "http://localhost:8000", "Indexer Agent Mgmt API Host")
 		networkSubgraph = rootFlagSet.String("network-subgraph", "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-testnet", "Network Subgraph Endpoint")
+		indexNode       = rootFlagSet.String("index-node", "http://localhost:8030/graphql", "Index or query node graphql endpoint")
 	)
+	statusIndexing := &ffcli.Command{
+		Name:       "indexing",
+		ShortUsage: "graph-indexer status indexing",
+		ShortHelp:  "Get subgraphs indexing statuses",
+		Exec: func(ctx context.Context, args []string) error {
+			return getIndexingStatuses(ctx, *indexNode)
+		},
+	}
 
 	status := &ffcli.Command{
-		Name:       "status",
-		ShortUsage: "graph-indexer status",
-		ShortHelp:  "Check the status of an indexer",
+		Name:        "status",
+		ShortUsage:  "graph-indexer status",
+		ShortHelp:   "Check the status of an indexer",
+		Subcommands: []*ffcli.Command{statusIndexing},
+
 		Exec: func(ctx context.Context, args []string) error {
 			return status(ctx, *agentHost, *networkSubgraph)
 		},

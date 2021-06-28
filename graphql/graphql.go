@@ -155,3 +155,14 @@ func (gs *GraphService) GetSubgraphDeploymentsSignalled() ([]SubgraphDeployment,
 	}
 	return q.SubgraphDeployments, nil
 }
+
+func (gs *GraphService) GetIndexingStatuses() ([]IndexingStatus, error) {
+	var q struct {
+		IndexingStatuses []IndexingStatus `graphql:"indexingStatuses"`
+	}
+	err := gs.Client.Query(context.Background(), &q, nil)
+	if err != nil {
+		return []IndexingStatus{}, err
+	}
+	return q.IndexingStatuses, nil
+}

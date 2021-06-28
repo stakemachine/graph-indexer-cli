@@ -86,3 +86,28 @@ type SubgraphDeployment struct {
 	SignalAmount    string `json:"signalAmount"`
 	SignalledTokens string `json:"signalledTokens"`
 }
+
+type ChainHeadBlock struct {
+	Number string `json:"number"`
+}
+
+type LatestBlock struct {
+	Number string `json:"number"`
+}
+
+type Chains struct {
+	ChainHeadBlock ChainHeadBlock `json:"chainHeadBlock"`
+	LatestBlock    LatestBlock    `json:"latestBlock"`
+	Network        string         `json:"network"`
+}
+
+type FatalError struct {
+	Handler interface{} `json:"handler"`
+}
+
+type IndexingStatus struct {
+	Chains     []Chains   `json:"chains"`
+	FatalError FatalError `json:"fatalError"`
+	Node       string     `json:"node"`
+	Subgraph   string     `json:"subgraph"`
+}
