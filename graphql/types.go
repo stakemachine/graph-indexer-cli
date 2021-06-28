@@ -81,7 +81,8 @@ type Epoch struct {
 }
 
 type SubgraphDeployment struct {
-	ID           string `json:"id"`
-	OriginalName string `json:"originalName"`
-	SignalAmount string `json:"signalAmount"`
+	ID              string `json:"id"`
+	OriginalName    string `json:"originalName"`
+	SignalAmount    string `json:"signalAmount"`
+	SignalledTokens string `json:"signalledTokens"`
 }

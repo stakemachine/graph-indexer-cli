@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -335,16 +336,29 @@ func signals(ctx context.Context, networkSubgraph string) error {
 	if err != nil {
 		return err
 	}
+	totalSignalAmount := big.NewFloat(0)
+	for _, s := range subgraphDeployments {
+		subgraphSignalAmount, ok := new(big.Float).SetString(s.SignalAmount)
+		if !ok {
+			return errors.New("failed to convert signal amount to big.Int")
+		}
+		totalSignalAmount = totalSignalAmount.Add(totalSignalAmount, subgraphSignalAmount)
+	}
 	ts := table.NewWriter()
 	ts.SetOutputMirror(os.Stdout)
-	ts.AppendHeader(table.Row{"#", "Subgraph Deploymend ID", "Subgraph Original Name", "Signal Amount"})
+	ts.AppendHeader(table.Row{"#", "Subgraph Deploymend ID", "Subgraph Original Name", "Signal Amount", "%", "Signalled Tokens"})
 	for i, s := range subgraphDeployments {
 		subgraphDeploymentHash, err := utils.SubgraphHexToHash(s.ID)
 		if err != nil {
 			return err
 		}
+		subgraphSignalAmount, ok := new(big.Float).SetString(s.SignalAmount)
+		if !ok {
+			return errors.New("failed to convert signal amount to big.Int")
+		}
+		percentage := new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount)
 		ts.AppendRows([]table.Row{
-			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount},
+			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentage, s.SignalledTokens},
 		})
 	}
 
