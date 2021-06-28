@@ -356,9 +356,14 @@ func signals(ctx context.Context, networkSubgraph string) error {
 		if !ok {
 			return errors.New("failed to convert signal amount to big.Int")
 		}
-		percentage := new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount)
+		percentage := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount))
+
+		signalledTokens, err := utils.ToDecimal(s.SignalledTokens, 18)
+		if err != nil {
+			return err
+		}
 		ts.AppendRows([]table.Row{
-			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentage, s.SignalledTokens},
+			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentage, signalledTokens.Round(2).String()},
 		})
 	}
 
