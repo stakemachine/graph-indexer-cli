@@ -337,16 +337,23 @@ func signals(ctx context.Context, networkSubgraph string) error {
 		return err
 	}
 	totalSignalAmount := big.NewFloat(0)
+	totalSignalledTokens := big.NewFloat(0)
 	for _, s := range subgraphDeployments {
 		subgraphSignalAmount, ok := new(big.Float).SetString(s.SignalAmount)
 		if !ok {
-			return errors.New("failed to convert signal amount to big.Int")
+			return errors.New("failed to convert signal amount to big.Float")
 		}
 		totalSignalAmount = totalSignalAmount.Add(totalSignalAmount, subgraphSignalAmount)
+		subgraphSignalledTokens, ok := new(big.Float).SetString(s.SignalledTokens)
+		if !ok {
+			return errors.New("failed to convert signalled tokens to big.Float")
+		}
+		totalSignalledTokens = totalSignalledTokens.Add(totalSignalledTokens, subgraphSignalledTokens)
 	}
+
 	ts := table.NewWriter()
 	ts.SetOutputMirror(os.Stdout)
-	ts.AppendHeader(table.Row{"#", "Subgraph Deploymend ID", "Subgraph Original Name", "Signal Amount", "%", "Signalled Tokens"})
+	ts.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Subgraph Original Name", "Signal Amount", "%", "Signalled Tokens", "%"})
 	for i, s := range subgraphDeployments {
 		subgraphDeploymentHash, err := utils.SubgraphHexToHash(s.ID)
 		if err != nil {
@@ -356,14 +363,19 @@ func signals(ctx context.Context, networkSubgraph string) error {
 		if !ok {
 			return errors.New("failed to convert signal amount to big.Int")
 		}
-		percentage := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount))
+		subgraphSignalledTokens, ok := new(big.Float).SetString(s.SignalledTokens)
+		if !ok {
+			return errors.New("failed to convert signal amount to big.Int")
+		}
+		percentageSignalAmount := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount))
+		percentageSignalledTokens := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalledTokens, totalSignalledTokens))
 
 		signalledTokens, err := utils.ToDecimal(s.SignalledTokens, 18)
 		if err != nil {
 			return err
 		}
 		ts.AppendRows([]table.Row{
-			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentage, signalledTokens.Round(2).String()},
+			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentageSignalAmount, signalledTokens.Round(2).String(), percentageSignalledTokens},
 		})
 	}
 
