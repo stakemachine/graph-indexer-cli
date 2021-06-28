@@ -110,4 +110,5 @@ type IndexingStatus struct {
 	FatalError FatalError `json:"fatalError"`
 	Node       string     `json:"node"`
 	Subgraph   string     `json:"subgraph"`
+	Health     string     `json:"health"`
 }

@@ -394,10 +394,10 @@ func getIndexingStatuses(ctx context.Context, indexNode string) error {
 	}
 	tis := table.NewWriter()
 	tis.SetOutputMirror(os.Stdout)
-	tis.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Chain", "Node ID", "Latest Block", "Chain Head"})
+	tis.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Chain", "Node ID", "Latest Block", "Chain Head", "Health"})
 	for i, is := range indexingStatuses {
 		tis.AppendRows([]table.Row{
-			{i, is.Subgraph, is.Chains[0].Network, is.Node, is.Chains[0].LatestBlock.Number, is.Chains[0].ChainHeadBlock.Number},
+			{i, is.Subgraph, is.Chains[0].Network, is.Node, is.Chains[0].LatestBlock.Number, is.Chains[0].ChainHeadBlock.Number, is.Health},
 		})
 	}
 	tis.SetStyle(table.StyleLight)
