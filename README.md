@@ -1,4 +1,6 @@
 # The Graph Indexer CLI
+[![golangci-lint](https://github.com/stakemachine/graph-indexer-cli/actions/workflows/golangci-lint.yml/badge.svg)](https://github.com/stakemachine/graph-indexer-cli/actions/workflows/golangci-lint.yml)
+[![CodeQL](https://github.com/stakemachine/graph-indexer-cli/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/stakemachine/graph-indexer-cli/actions/workflows/codeql-analysis.yml)  
 This repository is WIP rework of [indexer-cli](https://github.com/graphprotocol/indexer/tree/main/packages/indexer-cli).  
 Not all commands are implemented. Alpha software, use at your own risk.
 
