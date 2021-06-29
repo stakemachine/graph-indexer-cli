@@ -19,6 +19,7 @@ func main() {
 		agentHost       = rootFlagSet.String("indexer-agent", "http://localhost:8000", "Indexer Agent Mgmt API Host")
 		networkSubgraph = rootFlagSet.String("network-subgraph", "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-testnet", "Network Subgraph Endpoint")
 		indexNode       = rootFlagSet.String("index-node", "http://localhost:8030/graphql", "Index or query node graphql endpoint")
+		ethNode         = rootFlagSet.String("eth-node", "https://cloudflare-eth.com/", "Ethereum Node address")
 	)
 	statusIndexing := &ffcli.Command{
 		Name:       "indexing",
@@ -170,10 +171,19 @@ func main() {
 		},
 	}
 
+	poi := &ffcli.Command{
+		Name:       "poi",
+		ShortUsage: "graph-indexer poi <indexer> <blockNumber>",
+		ShortHelp:  "Get ProofOfIndexing ",
+		Exec: func(ctx context.Context, args []string) error {
+			return getPoi(ctx, *ethNode, *indexNode, *networkSubgraph, args[0], args[1], args[2])
+		},
+	}
+
 	root := &ffcli.Command{
 		ShortUsage:  "graph-indexer [flags] <subcommand>",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{status, rules, cost, signals},
+		Subcommands: []*ffcli.Command{status, rules, cost, signals, poi},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("GRAPH")},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp

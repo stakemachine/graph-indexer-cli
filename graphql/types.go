@@ -76,7 +76,7 @@ type Indexer struct {
 	AvailableStake  string
 }
 
-type Epoch struct {
+type GraphNetwork struct {
 	CurrentEpoch int
 }
 
@@ -111,4 +111,12 @@ type IndexingStatus struct {
 	Node       string     `json:"node"`
 	Subgraph   string     `json:"subgraph"`
 	Health     string     `json:"health"`
+}
+
+type ProofOfIndexing string
+
+type Epoch struct {
+	EndBlock   int    `json:"endBlock"`
+	ID         string `json:"id"`
+	StartBlock int    `json:"startBlock"`
 }

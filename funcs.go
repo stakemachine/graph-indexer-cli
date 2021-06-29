@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/shurcooL/graphql"
@@ -402,5 +403,46 @@ func getIndexingStatuses(ctx context.Context, indexNode string) error {
 	}
 	tis.SetStyle(table.StyleLight)
 	tis.Render()
+	return nil
+}
+
+func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAddress, subgraph, epoch string) error {
+	epochInt, err := strconv.Atoi(epoch)
+	if err != nil {
+		return err
+	}
+	subgraphAPI := graphql.NewClient(networkSubgraph, nil)
+	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
+	epochInfo, err := subgraphAPIClient.GetEpochInfo(epochInt)
+	if err != nil {
+		return err
+	}
+	ethClient, err := ethclient.Dial(ethNode)
+	if err != nil {
+		return err
+	}
+	blockInfo, err := ethClient.BlockByNumber(ctx, big.NewInt(int64(epochInfo.StartBlock)))
+	if err != nil {
+		return err
+	}
+
+	indexNodeAPI := graphql.NewClient(indexNode, nil)
+	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
+	poi, err := indexNodeAPIClient.GetProofOfIndexing(epochInfo.StartBlock, blockInfo.Hash().String(), indexerAddress, subgraph)
+	if err != nil {
+		return err
+	}
+
+	tp := table.NewWriter()
+	tp.SetOutputMirror(os.Stdout)
+	tp.AppendHeader(table.Row{"Start Block", "Block Hash", "Proof Of Indexing"})
+
+	tp.AppendRows([]table.Row{
+		{epochInfo.StartBlock, blockInfo.Hash().String(), poi},
+	})
+
+	tp.SetStyle(table.StyleLight)
+	tp.Render()
+
 	return nil
 }

@@ -134,15 +134,15 @@ func (gs *GraphService) GetIndexerInfo(indexer string) (Indexer, error) {
 	return q.Indexer, nil
 }
 
-func (gs *GraphService) GetCurrentEpoch() (Epoch, error) {
+func (gs *GraphService) GetCurrentEpoch() (GraphNetwork, error) {
 	var q struct {
-		CurrentEpoch Epoch `graphql:"graphNetwork(id: 1)"`
+		GraphNetwork GraphNetwork `graphql:"graphNetwork(id: 1)"`
 	}
 	err := gs.Client.Query(context.Background(), &q, nil)
 	if err != nil {
-		return Epoch{}, err
+		return GraphNetwork{}, err
 	}
-	return q.CurrentEpoch, nil
+	return q.GraphNetwork, nil
 }
 
 func (gs *GraphService) GetSubgraphDeploymentsSignalled() ([]SubgraphDeployment, error) {
@@ -165,4 +165,35 @@ func (gs *GraphService) GetIndexingStatuses() ([]IndexingStatus, error) {
 		return []IndexingStatus{}, err
 	}
 	return q.IndexingStatuses, nil
+}
+
+func (gs *GraphService) GetEpochInfo(epochNumber int) (Epoch, error) {
+	variables := map[string]interface{}{
+		"epochNumber": graphql.Int(epochNumber),
+	}
+	var q struct {
+		Epoch Epoch `graphql:"epoch(id:$epochNumber)"`
+	}
+	err := gs.Client.Query(context.Background(), &q, variables)
+	if err != nil {
+		return Epoch{}, err
+	}
+	return q.Epoch, nil
+}
+
+func (gs *GraphService) GetProofOfIndexing(blockNumber int, blockHash, indexerAddress, subgraph string) (ProofOfIndexing, error) {
+	variables := map[string]interface{}{
+		"indexer":     graphql.String(strings.ToLower(indexerAddress)),
+		"blockNumber": graphql.Int(blockNumber),
+		"blockHash":   graphql.String(blockHash),
+		"subgraph":    graphql.String(subgraph),
+	}
+	var q struct {
+		ProofOfIndexing ProofOfIndexing `graphql:"proofOfIndexing(indexer:$indexer, blockNumber:$blockNumber, blockHash:$blockHash, subgraph:$subgraph)"`
+	}
+	err := gs.Client.Query(context.Background(), &q, variables)
+	if err != nil {
+		return "", err
+	}
+	return q.ProofOfIndexing, nil
 }
