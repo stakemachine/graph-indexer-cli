@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -352,6 +353,13 @@ func signals(ctx context.Context, networkSubgraph string) error {
 		totalSignalledTokens = totalSignalledTokens.Add(totalSignalledTokens, subgraphSignalledTokens)
 	}
 
+	sort.SliceStable(subgraphDeployments, func(i, j int) bool {
+
+		numA, _ := new(big.Int).SetString(subgraphDeployments[i].SignalAmount, 10)
+		numB, _ := new(big.Int).SetString(subgraphDeployments[j].SignalAmount, 10)
+		return numA.Cmp(numB) > 0
+	})
+
 	ts := table.NewWriter()
 	ts.SetOutputMirror(os.Stdout)
 	ts.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Subgraph Original Name", "Signal Amount", "%", "Signalled Tokens", "%"})
@@ -438,7 +446,7 @@ func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAdd
 	tp.AppendHeader(table.Row{"Start Block", "Block Hash", "Proof Of Indexing"})
 
 	tp.AppendRows([]table.Row{
-		{epochInfo.StartBlock, blockInfo.Hash().String(), poi},
+		{epochInfo.StartBlock, blockInfo.Hash().Hex(), poi},
 	})
 
 	tp.SetStyle(table.StyleLight)
