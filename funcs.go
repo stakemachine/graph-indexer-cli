@@ -519,14 +519,20 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 				}
 
 			}
+
 			var match string
-			if totalNumberOfPoi == matches {
+
+			switch {
+			case totalNumberOfPoi == 0:
+				continue
+			case totalNumberOfPoi == matches:
 				match = text.FgGreen.Sprintf("%d/%d", matches, totalNumberOfPoi)
-			} else if matches == 0 {
+			case matches == 0:
 				match = text.FgRed.Sprintf("%d/%d", matches, totalNumberOfPoi)
-			} else {
+			default:
 				match = text.FgYellow.Sprintf("%d/%d", matches, totalNumberOfPoi)
 			}
+
 			fmt.Printf("Subgraph: %s\tPOI Matches: %s\n", subgraphHash, match)
 		}
 		epoch--
