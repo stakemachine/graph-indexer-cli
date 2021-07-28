@@ -120,6 +120,21 @@ func (gs *GraphService) GetActiveAllocations(indexer string) ([]Allocation, erro
 	return q.Allocations, nil
 }
 
+func (gs *GraphService) GetClosedAllocations(subgraph string, epoch int) ([]Allocation, error) {
+	variables := map[string]interface{}{
+		"subgraph": graphql.String(strings.ToLower(subgraph)),
+		"epoch":    graphql.Int(epoch),
+	}
+	var q struct {
+		Allocations []Allocation `graphql:"allocations(first: 1000, where: {subgraphDeployment:$subgraph, status: Closed, closedAtEpoch:$epoch})"`
+	}
+	err := gs.Client.Query(context.Background(), &q, variables)
+	if err != nil {
+		return []Allocation{}, err
+	}
+	return q.Allocations, nil
+}
+
 func (gs *GraphService) GetIndexerInfo(indexer string) (Indexer, error) {
 	variables := map[string]interface{}{
 		"indexer": graphql.String(strings.ToLower(indexer)),

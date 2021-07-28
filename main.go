@@ -171,10 +171,19 @@ func main() {
 		},
 	}
 
+	poiCompare := &ffcli.Command{
+		Name:       "compare",
+		ShortUsage: "graph-indexer-cli poi compare",
+		Exec: func(ctx context.Context, args []string) error {
+			return comparePoi(ctx, *agentHost, *indexNode, *ethNode, *networkSubgraph)
+		},
+	}
+
 	poi := &ffcli.Command{
-		Name:       "poi",
-		ShortUsage: "graph-indexer poi <indexer> <blockNumber>",
-		ShortHelp:  "Get ProofOfIndexing ",
+		Name:        "poi",
+		ShortUsage:  "graph-indexer poi <indexer> <blockNumber>",
+		ShortHelp:   "Get ProofOfIndexing ",
+		Subcommands: []*ffcli.Command{poiCompare},
 		Exec: func(ctx context.Context, args []string) error {
 			return getPoi(ctx, *ethNode, *indexNode, *networkSubgraph, args[0], args[1], args[2])
 		},

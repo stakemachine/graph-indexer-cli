@@ -3,7 +3,7 @@ module github.com/stakemachine/graph-indexer-cli
 go 1.16
 
 require (
-	github.com/ethereum/go-ethereum v1.10.4
+	github.com/ethereum/go-ethereum v1.10.6
 	github.com/jedib0t/go-pretty/v6 v6.1.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/peterbourgon/ff/v3 v3.0.0

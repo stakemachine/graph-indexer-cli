@@ -354,7 +354,6 @@ func signals(ctx context.Context, networkSubgraph string) error {
 	}
 
 	sort.SliceStable(subgraphDeployments, func(i, j int) bool {
-
 		numA, _ := new(big.Int).SetString(subgraphDeployments[i].SignalAmount, 10)
 		numB, _ := new(big.Int).SetString(subgraphDeployments[j].SignalAmount, 10)
 		return numA.Cmp(numB) > 0
@@ -452,5 +451,70 @@ func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAdd
 	tp.SetStyle(table.StyleLight)
 	tp.Render()
 
+	return nil
+}
+
+func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgraph string) error {
+	mgmtAPI := graphql.NewClient(agentHost, nil)
+	gqlClient := mgmt.GraphService{Client: mgmtAPI}
+
+	indexNodeAPI := graphql.NewClient(indexNode, nil)
+	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
+
+	status, err := gqlClient.GetStatus()
+	if err != nil {
+		return err
+	}
+	fmt.Println("Indexer: ", status.IndexerRegistration.Address)
+	subgraphAPI := graphql.NewClient(networkSubgraph, nil)
+	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
+	currentEpoch, err := subgraphAPIClient.GetCurrentEpoch()
+	if err != nil {
+		return err
+	}
+
+	epochInfo, err := subgraphAPIClient.GetEpochInfo(currentEpoch.CurrentEpoch)
+	if err != nil {
+		return err
+	}
+
+	ethClient, err := ethclient.Dial(ethNode)
+	if err != nil {
+		return err
+	}
+	blockInfo, err := ethClient.BlockByNumber(ctx, big.NewInt(int64(epochInfo.StartBlock)))
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Current epoch: ", currentEpoch.CurrentEpoch)
+	allos, err := subgraphAPIClient.GetActiveAllocations(status.IndexerRegistration.Address)
+	if err != nil {
+		return err
+	}
+
+	for _, a := range allos {
+		subgraphHash, e := utils.SubgraphHexToHash(a.SubgraphDeployment.ID)
+		if e != nil {
+			return e
+		}
+		closedAllos, e := subgraphAPIClient.GetClosedAllocations(a.SubgraphDeployment.ID, currentEpoch.CurrentEpoch)
+		if e != nil {
+			return e
+		}
+		totalNumberOfPoi := len(closedAllos)
+		matches := 0
+		for _, ca := range closedAllos {
+			poi, err := indexNodeAPIClient.GetProofOfIndexing(epochInfo.StartBlock, blockInfo.Hash().String(), ca.Indexer.ID, subgraphHash)
+			if err != nil {
+				return err
+			}
+			if ca.Poi == string(poi) {
+				matches = matches + 1
+			}
+
+		}
+		fmt.Printf("Subgraph: %s\tPOI Matches: %d/%d\n", subgraphHash, matches, totalNumberOfPoi)
+	}
 	return nil
 }

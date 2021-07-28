@@ -61,11 +61,15 @@ type Status struct {
 }
 
 type Allocation struct {
-	ID                 string
+	ID      string
+	Indexer struct {
+		ID string
+	}
 	SubgraphDeployment struct {
 		ID           string
 		OriginalName string
 	}
+	Poi             string
 	CreatedAtEpoch  int
 	AllocatedTokens string
 }
