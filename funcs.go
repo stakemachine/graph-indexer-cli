@@ -454,7 +454,7 @@ func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAdd
 	return nil
 }
 
-func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgraph string, count int) error {
+func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgraph string, verbose bool, count int) error {
 	mgmtAPI := graphql.NewClient(agentHost, nil)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 
@@ -511,11 +511,19 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 				if err != nil {
 					return err
 				}
+
 				if ca.Poi == string(poi) {
 					matches++
 				}
 				if ca.Poi == "0x0000000000000000000000000000000000000000000000000000000000000000" {
-					totalNumberOfPoi--
+					if !verbose {
+						totalNumberOfPoi--
+					}
+				}
+				if verbose {
+					if ca.Poi != string(poi) {
+						fmt.Printf("%s Indexer %s submitted: %s we got: %s subgraph: %s\n", text.FgRed.Sprint("Mismatch found!"), ca.Indexer.ID, ca.Poi, poi, subgraphHash)
+					}
 				}
 
 			}

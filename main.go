@@ -17,6 +17,7 @@ func main() {
 		rulesFlagSet = flag.NewFlagSet("graph-indexer rules", flag.ExitOnError)
 		/*costFlagSet   = flag.NewFlagSet("graph-indexer cost", flag.ExitOnError)
 		statusFlagSet = flag.NewFlagSet("graph-indexer status", flag.ExitOnError) */
+		verbose         = rootFlagSet.Bool("v", false, "increase log verbosity")
 		agentHost       = rootFlagSet.String("indexer-agent", "http://localhost:8000", "Indexer Agent Mgmt API Host")
 		networkSubgraph = rootFlagSet.String("network-subgraph", "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-testnet", "Network Subgraph Endpoint")
 		indexNode       = rootFlagSet.String("index-node", "http://localhost:8030/graphql", "Index or query node graphql endpoint")
@@ -184,7 +185,7 @@ func main() {
 					return err
 				}
 			}
-			return comparePoi(ctx, *agentHost, *indexNode, *ethNode, *networkSubgraph, count)
+			return comparePoi(ctx, *agentHost, *indexNode, *ethNode, *networkSubgraph, *verbose, count)
 		},
 	}
 
