@@ -454,7 +454,7 @@ func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAdd
 	return nil
 }
 
-func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgraph string) error {
+func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgraph string, count int) error {
 	mgmtAPI := graphql.NewClient(agentHost, nil)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 
@@ -473,16 +473,7 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 		return err
 	}
 
-	epochInfo, err := subgraphAPIClient.GetEpochInfo(currentEpoch.CurrentEpoch)
-	if err != nil {
-		return err
-	}
-
 	ethClient, err := ethclient.Dial(ethNode)
-	if err != nil {
-		return err
-	}
-	blockInfo, err := ethClient.BlockByNumber(ctx, big.NewInt(int64(epochInfo.StartBlock)))
 	if err != nil {
 		return err
 	}
@@ -492,29 +483,45 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 	if err != nil {
 		return err
 	}
-
-	for _, a := range allos {
-		subgraphHash, e := utils.SubgraphHexToHash(a.SubgraphDeployment.ID)
-		if e != nil {
-			return e
+	epoch := currentEpoch.CurrentEpoch
+	for i := 0; i < count; i++ {
+		fmt.Println("Checking epoch", epoch)
+		epochInfo, err := subgraphAPIClient.GetEpochInfo(epoch)
+		if err != nil {
+			return err
 		}
-		closedAllos, e := subgraphAPIClient.GetClosedAllocations(a.SubgraphDeployment.ID, currentEpoch.CurrentEpoch)
-		if e != nil {
-			return e
+		blockInfo, err := ethClient.BlockByNumber(ctx, big.NewInt(int64(epochInfo.StartBlock)))
+		if err != nil {
+			return err
 		}
-		totalNumberOfPoi := len(closedAllos)
-		matches := 0
-		for _, ca := range closedAllos {
-			poi, err := indexNodeAPIClient.GetProofOfIndexing(epochInfo.StartBlock, blockInfo.Hash().String(), ca.Indexer.ID, subgraphHash)
-			if err != nil {
-				return err
-			}
-			if ca.Poi == string(poi) {
-				matches = matches + 1
+		for _, a := range allos {
+			subgraphHash, e := utils.SubgraphHexToHash(a.SubgraphDeployment.ID)
+			if e != nil {
+				return e
 			}
 
+			closedAllos, e := subgraphAPIClient.GetClosedAllocations(a.SubgraphDeployment.ID, epoch)
+			if e != nil {
+				return e
+			}
+			totalNumberOfPoi := len(closedAllos)
+			matches := 0
+			for _, ca := range closedAllos {
+				poi, err := indexNodeAPIClient.GetProofOfIndexing(epochInfo.StartBlock, blockInfo.Hash().String(), ca.Indexer.ID, subgraphHash)
+				if err != nil {
+					return err
+				}
+				if ca.Poi == string(poi) {
+					matches++
+				}
+				if ca.Poi == "0x0000000000000000000000000000000000000000000000000000000000000000" {
+					totalNumberOfPoi--
+				}
+
+			}
+			fmt.Printf("Subgraph: %s\tPOI Matches: %d/%d\n", subgraphHash, matches, totalNumberOfPoi)
 		}
-		fmt.Printf("Subgraph: %s\tPOI Matches: %d/%d\n", subgraphHash, matches, totalNumberOfPoi)
+		epoch--
 	}
 	return nil
 }

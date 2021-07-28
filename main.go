@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -175,7 +176,15 @@ func main() {
 		Name:       "compare",
 		ShortUsage: "graph-indexer-cli poi compare",
 		Exec: func(ctx context.Context, args []string) error {
-			return comparePoi(ctx, *agentHost, *indexNode, *ethNode, *networkSubgraph)
+			count := 1
+			var err error
+			if len(args) > 0 && args[0] != "" {
+				count, err = strconv.Atoi(args[0])
+				if err != nil {
+					return err
+				}
+			}
+			return comparePoi(ctx, *agentHost, *indexNode, *ethNode, *networkSubgraph, count)
 		},
 	}
 
