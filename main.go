@@ -4,8 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -22,13 +24,17 @@ func main() {
 		networkSubgraph = rootFlagSet.String("network-subgraph", "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-testnet", "Network Subgraph Endpoint")
 		indexNode       = rootFlagSet.String("index-node", "http://localhost:8030/graphql", "Index or query node graphql endpoint")
 		ethNode         = rootFlagSet.String("eth-node", "https://cloudflare-eth.com/", "Ethereum Node address")
+		httpTimeout     = rootFlagSet.Int("timeout", 15, "HTTP timeout")
 	)
+	httpClient := http.Client{
+		Timeout: time.Duration(*httpTimeout) * time.Second,
+	}
 	statusIndexing := &ffcli.Command{
 		Name:       "indexing",
 		ShortUsage: "graph-indexer status indexing",
 		ShortHelp:  "Get subgraphs indexing statuses",
 		Exec: func(ctx context.Context, args []string) error {
-			return getIndexingStatuses(ctx, *indexNode)
+			return getIndexingStatuses(ctx, *indexNode, httpClient)
 		},
 	}
 
@@ -39,7 +45,7 @@ func main() {
 		Subcommands: []*ffcli.Command{statusIndexing},
 
 		Exec: func(ctx context.Context, args []string) error {
-			return status(ctx, *agentHost, *networkSubgraph)
+			return status(ctx, *agentHost, *networkSubgraph, httpClient)
 		},
 	}
 
@@ -49,7 +55,7 @@ func main() {
 		ShortHelp:  "Get one or more indexing rules",
 		//	FlagSet:    stakeFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
-			return getRule(ctx, *agentHost, args)
+			return getRule(ctx, *agentHost, args, httpClient)
 		},
 	}
 
@@ -60,7 +66,7 @@ func main() {
 		// Subcommands: []*ffcli.Command{rulesSetDecisionBasis, rulesSetAllocationAmmount},
 
 		Exec: func(ctx context.Context, args []string) error {
-			return setRule(ctx, *agentHost, args[0], args[1:])
+			return setRule(ctx, *agentHost, args[0], args[1:], httpClient)
 		},
 	}
 	rulesStart := &ffcli.Command{
@@ -100,7 +106,7 @@ func main() {
 		FlagSet:    rulesFlagSet,
 		//	FlagSet:    stakeFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
-			return deleteRule(ctx, *agentHost, args)
+			return deleteRule(ctx, *agentHost, args, httpClient)
 		},
 	}
 
@@ -120,7 +126,7 @@ func main() {
 		ShortHelp:  "Update a cost model",
 		//	FlagSet:    stakeFlagSet,
 		Exec: func(_ context.Context, args []string) error {
-			return setCostModel(*agentHost, args[0], args[1:])
+			return setCostModel(*agentHost, args[0], args[1:], httpClient)
 		},
 	}
 	costSetVariables := &ffcli.Command{
@@ -138,7 +144,7 @@ func main() {
 		ShortHelp:  "Get cost models and/or variables for one or all subgraphs",
 		//	FlagSet:    stakeFlagSet,
 		Exec: func(_ context.Context, args []string) error {
-			return getAllModelsWithVariables(*agentHost)
+			return getAllModelsWithVariables(*agentHost, httpClient)
 		},
 	}
 	costSet := &ffcli.Command{
@@ -169,7 +175,7 @@ func main() {
 		ShortUsage: "graph-indexer signals",
 		ShortHelp:  "Get list of subgraph deployments with signals",
 		Exec: func(ctx context.Context, args []string) error {
-			return signals(ctx, *networkSubgraph)
+			return signals(ctx, *networkSubgraph, httpClient)
 		},
 	}
 
@@ -185,7 +191,7 @@ func main() {
 					return err
 				}
 			}
-			return comparePoi(ctx, *agentHost, *indexNode, *ethNode, *networkSubgraph, *verbose, count)
+			return comparePoi(ctx, *agentHost, *indexNode, *ethNode, *networkSubgraph, *verbose, count, httpClient)
 		},
 	}
 
@@ -195,7 +201,7 @@ func main() {
 		ShortHelp:   "Get ProofOfIndexing ",
 		Subcommands: []*ffcli.Command{poiCompare},
 		Exec: func(ctx context.Context, args []string) error {
-			return getPoi(ctx, *ethNode, *indexNode, *networkSubgraph, args[0], args[1], args[2])
+			return getPoi(ctx, *ethNode, *indexNode, *networkSubgraph, args[0], args[1], args[2], httpClient)
 		},
 	}
 

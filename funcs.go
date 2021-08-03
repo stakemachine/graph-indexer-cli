@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -80,27 +82,27 @@ func printCostModels(costModels []mgmt.CostModel) error {
 	return nil
 }
 
-func status(ctx context.Context, agentHost string, networkSubgraph string) error {
-	mgmtAPI := graphql.NewClient(agentHost, nil)
+func status(ctx context.Context, agentHost string, networkSubgraph string, httpClient http.Client) error {
+	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 
 	status, err := gqlClient.GetStatus()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
-	subgraphAPI := graphql.NewClient(networkSubgraph, nil)
+	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
 	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
 	allos, err := subgraphAPIClient.GetActiveAllocations(status.IndexerRegistration.Address)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	indexerInfo, err := subgraphAPIClient.GetIndexerInfo(status.IndexerRegistration.Address)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	currentEpoch, err := subgraphAPIClient.GetCurrentEpoch()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	fmt.Println("Registration")
 	t := table.NewWriter()
@@ -127,15 +129,15 @@ func status(ctx context.Context, agentHost string, networkSubgraph string) error
 	ti.AppendHeader(table.Row{"Staked tokens", "Allocated tokens", "Available stake"})
 	stakedTokens, err := utils.ToDecimal(indexerInfo.StakedTokens, 18)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	allocatedTokens, err := utils.ToDecimal(indexerInfo.AllocatedTokens, 18)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	availableStake, err := utils.ToDecimal(indexerInfo.AvailableStake, 18)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	ti.AppendRows([]table.Row{
 		{stakedTokens, allocatedTokens, availableStake},
@@ -151,11 +153,11 @@ func status(ctx context.Context, agentHost string, networkSubgraph string) error
 		for _, a := range allos {
 			subgraphHash, e := utils.SubgraphHexToHash(a.SubgraphDeployment.ID)
 			if e != nil {
-				panic(e)
+				log.Fatalln(e)
 			}
 			allocatedTokens, e := utils.ToDecimal(a.AllocatedTokens, 18)
 			if e != nil {
-				panic(e)
+				log.Fatalln(e)
 			}
 			ta.AppendRows([]table.Row{
 				{a.ID, subgraphHash, a.SubgraphDeployment.OriginalName, a.CreatedAtEpoch, allocatedTokens},
@@ -175,11 +177,11 @@ func status(ctx context.Context, agentHost string, networkSubgraph string) error
 	return nil
 }
 
-func getRule(ctx context.Context, agentHost string, args []string) error {
+func getRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
 	if len(args) != 1 {
 		return errors.New("rules get requires one hash argument")
 	}
-	mgmtAPI := graphql.NewClient(agentHost, nil)
+	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 	deployment := args[0]
 	var id string
@@ -205,11 +207,11 @@ func getRule(ctx context.Context, agentHost string, args []string) error {
 	return nil
 }
 
-func setRule(ctx context.Context, agentHost string, deploymentID string, args []string) error {
+func setRule(ctx context.Context, agentHost string, deploymentID string, args []string, httpClient http.Client) error {
 	if len(args)%2 != 0 {
-		return errors.New("An uneven number of key/value pairs was passed")
+		return errors.New("an uneven number of key/value pairs was passed")
 	}
-	mgmtAPI := graphql.NewClient(agentHost, nil)
+	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 	rulesMap := make(map[string]string)
 	for i := 0; i < len(args); i += 2 {
@@ -267,11 +269,11 @@ func setRule(ctx context.Context, agentHost string, deploymentID string, args []
 	return nil
 }
 
-func deleteRule(ctx context.Context, agentHost string, args []string) error {
+func deleteRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
 	if len(args) != 1 {
 		return errors.New("rules get requires one hash argument")
 	}
-	mgmtAPI := graphql.NewClient(agentHost, nil)
+	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 	deploymentID := args[0]
 	ok, err := gqlClient.DeleteIndexingRule(deploymentID)
@@ -284,8 +286,8 @@ func deleteRule(ctx context.Context, agentHost string, args []string) error {
 	return nil
 }
 
-func getAllModelsWithVariables(agentHost string) error {
-	mgmtAPI := graphql.NewClient(agentHost, nil)
+func getAllModelsWithVariables(agentHost string, httpClient http.Client) error {
+	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 	modelsWithVariables, err := gqlClient.GetModelsWithVariables()
 	if err != nil {
@@ -298,9 +300,9 @@ func getAllModelsWithVariables(agentHost string) error {
 	return nil
 }
 
-func setCostModel(agentHost string, deploymentID string, args []string) error {
+func setCostModel(agentHost string, deploymentID string, args []string, httpClient http.Client) error {
 	if len(args)%2 != 0 {
-		return errors.New("An uneven number of key/value pairs was passed")
+		return errors.New("an uneven number of key/value pairs was passed")
 	}
 	modelMap := make(map[string]string)
 	for i := 0; i < len(args); i += 2 {
@@ -308,7 +310,7 @@ func setCostModel(agentHost string, deploymentID string, args []string) error {
 	}
 	deployment, err := utils.SubgraphHashToHex(deploymentID)
 	if err != nil {
-		return fmt.Errorf("Error SubgraphHashToHex: %w", err)
+		return fmt.Errorf("error SubgraphHashToHex: %w", err)
 	}
 	costModel := mgmt.CostModel{
 		Deployment: deployment,
@@ -316,7 +318,7 @@ func setCostModel(agentHost string, deploymentID string, args []string) error {
 		Variables:  modelMap["variables"],
 	}
 
-	mgmtAPI := graphql.NewClient(agentHost, nil)
+	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 	modelResponse, err := gqlClient.SetModel(costModel)
 	if err != nil {
@@ -331,8 +333,8 @@ func setCostModel(agentHost string, deploymentID string, args []string) error {
 	return nil
 }
 
-func signals(ctx context.Context, networkSubgraph string) error {
-	subgraphAPI := graphql.NewClient(networkSubgraph, nil)
+func signals(ctx context.Context, networkSubgraph string, httpClient http.Client) error {
+	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
 	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
 	subgraphDeployments, err := subgraphAPIClient.GetSubgraphDeploymentsSignalled()
 	if err != nil {
@@ -393,8 +395,8 @@ func signals(ctx context.Context, networkSubgraph string) error {
 	return nil
 }
 
-func getIndexingStatuses(ctx context.Context, indexNode string) error {
-	indexNodeAPI := graphql.NewClient(indexNode, nil)
+func getIndexingStatuses(ctx context.Context, indexNode string, httpClient http.Client) error {
+	indexNodeAPI := graphql.NewClient(indexNode, &httpClient)
 	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
 	indexingStatuses, err := indexNodeAPIClient.GetIndexingStatuses()
 	if err != nil {
@@ -413,12 +415,12 @@ func getIndexingStatuses(ctx context.Context, indexNode string) error {
 	return nil
 }
 
-func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAddress, subgraph, epoch string) error {
+func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAddress, subgraph, epoch string, httpClient http.Client) error {
 	epochInt, err := strconv.Atoi(epoch)
 	if err != nil {
 		return err
 	}
-	subgraphAPI := graphql.NewClient(networkSubgraph, nil)
+	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
 	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
 	epochInfo, err := subgraphAPIClient.GetEpochInfo(epochInt)
 	if err != nil {
@@ -433,7 +435,7 @@ func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAdd
 		return err
 	}
 
-	indexNodeAPI := graphql.NewClient(indexNode, nil)
+	indexNodeAPI := graphql.NewClient(indexNode, &httpClient)
 	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
 	poi, err := indexNodeAPIClient.GetProofOfIndexing(epochInfo.StartBlock, blockInfo.Hash().String(), indexerAddress, subgraph)
 	if err != nil {
@@ -454,11 +456,11 @@ func getPoi(ctx context.Context, ethNode, indexNode, networkSubgraph, indexerAdd
 	return nil
 }
 
-func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgraph string, verbose bool, count int) error {
-	mgmtAPI := graphql.NewClient(agentHost, nil)
+func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgraph string, verbose bool, count int, httpClient http.Client) error {
+	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 
-	indexNodeAPI := graphql.NewClient(indexNode, nil)
+	indexNodeAPI := graphql.NewClient(indexNode, &httpClient)
 	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
 
 	status, err := gqlClient.GetStatus()
@@ -466,7 +468,7 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 		return err
 	}
 	fmt.Println("Indexer: ", status.IndexerRegistration.Address)
-	subgraphAPI := graphql.NewClient(networkSubgraph, nil)
+	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
 	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
 	currentEpoch, err := subgraphAPIClient.GetCurrentEpoch()
 	if err != nil {
@@ -520,9 +522,34 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 						totalNumberOfPoi--
 					}
 				}
+
 				if verbose {
 					if ca.Poi != string(poi) {
-						fmt.Printf("%s Indexer %s submitted: %s we got: %s subgraph: %s\n", text.FgRed.Sprint("Mismatch found!"), ca.Indexer.ID, ca.Poi, poi, subgraphHash)
+						allocatedTokens, e := utils.ToDecimal(ca.AllocatedTokens, 18)
+						if e != nil {
+							return e
+						}
+						fmt.Printf("%s Indexer %s submitted: %s we got: %s subgraph: %s allocated tokens: %s\n", text.FgRed.Sprint("Mismatch found!"), ca.Indexer.ID, ca.Poi, poi, subgraphHash, allocatedTokens)
+
+						previousEpochInfo, err := subgraphAPIClient.GetEpochInfo(epoch - 1)
+						if err != nil {
+							return err
+						}
+						previousBlockInfo, err := ethClient.BlockByNumber(ctx, big.NewInt(int64(previousEpochInfo.StartBlock)))
+						if err != nil {
+							return err
+						}
+
+						previousPoi, err := indexNodeAPIClient.GetProofOfIndexing(previousEpochInfo.StartBlock, previousBlockInfo.Hash().String(), status.IndexerRegistration.Address, subgraphHash)
+						if err != nil {
+							return err
+						}
+
+						if ca.Poi != string(previousPoi) {
+							fmt.Printf("previous poi not ok %s Indexer %s submitted: %s we got: %s subgraph: %s allocated tokens: %s epoch: %s\n", text.FgRed.Sprint("Mismatch found!"), ca.Indexer.ID, ca.Poi, previousPoi, subgraphHash, allocatedTokens, previousEpochInfo.ID)
+						} else {
+							fmt.Printf("previous poi ok %s Indexer %s submitted: %s we got: %s subgraph: %s allocated tokens: %s epoch: %s\n", text.FgRed.Sprint("Mismatch found!"), ca.Indexer.ID, ca.Poi, previousPoi, subgraphHash, allocatedTokens, previousEpochInfo.ID)
+						}
 					}
 				}
 

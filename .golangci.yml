@@ -42,7 +42,7 @@ linters-settings:
     check-shadowing: true
   gocyclo:
     # minimal code complexity to report, 30 by default
-    min-complexity: 20
+    min-complexity: 30
   goconst:
     min-len: 3 # minimum length of string constant
     min-occurrences: 6 # minimum number of occurrences
