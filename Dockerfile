@@ -1,4 +1,4 @@
-FROM golang:1.16 as builder
+FROM golang:1.17.0 as builder
 RUN apt update && \
     apt-get install ca-certificates tzdata -y && \
     update-ca-certificates
