@@ -7,7 +7,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.2.4
 	github.com/mr-tron/base58 v1.2.0
 	github.com/peterbourgon/ff/v3 v3.1.2
-	github.com/shopspring/decimal v1.2.0
+	github.com/shopspring/decimal v1.3.1
 	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a
 )
 
