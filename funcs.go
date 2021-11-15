@@ -13,13 +13,36 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/shurcooL/graphql"
+	"github.com/stakemachine/graph-indexer-cli/eth"
 	mgmt "github.com/stakemachine/graph-indexer-cli/graphql"
 	"github.com/stakemachine/graph-indexer-cli/utils"
 )
+
+func askForConfirmation() bool {
+	var response string
+
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	switch strings.ToLower(response) {
+	case "y", "yes":
+		return true
+	case "n", "no":
+		return false
+	default:
+		fmt.Println("Please type only (y)es or (n)o and then press enter:")
+		return askForConfirmation()
+	}
+}
 
 func printRules(rules []mgmt.IndexingRule) error {
 	if len(rules) > 1 {
@@ -571,6 +594,154 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 			fmt.Printf("Subgraph: %s\tPOI Matches: %s\n", subgraphHash, match)
 		}
 		epoch--
+	}
+	return nil
+}
+
+func getAllocation(ctx context.Context, ethNode, contractAddress, allocationID string) error {
+	ethClient, err := ethclient.Dial(ethNode)
+	if err != nil {
+		return err
+	}
+	e := eth.Service{
+		Client: ethClient,
+	}
+	allocationData, err := e.GetAllocation(contractAddress, allocationID)
+	if err != nil {
+		return err
+	}
+
+	allocationState, err := e.GetAllocationState(contractAddress, allocationID)
+	if err != nil {
+		return err
+	}
+
+	subgraphHash, err := utils.SubgraphHexToHash(common.BytesToHash(allocationData.SubgraphDeploymentID[:]).String())
+	if err != nil {
+		return err
+	}
+	allocatedTokens, err := utils.ToDecimal(allocationData.Tokens, 18)
+	if err != nil {
+		return err
+	}
+
+	accRewardsPerAllocatedToken, err := utils.ToDecimal(allocationData.AccRewardsPerAllocatedToken, 18)
+	if err != nil {
+		return err
+	}
+
+	effectiveAllocation, err := utils.ToDecimal(allocationData.EffectiveAllocation, 18)
+	if err != nil {
+		return err
+	}
+
+	ta := table.NewWriter()
+	ta.SetOutputMirror(os.Stdout)
+	ta.AppendRows([]table.Row{
+		{"Allocation ID", allocationID},
+		{"Indexer Address", allocationData.Indexer},
+		{"Subgraph ID", subgraphHash},
+		{"Allocated Tokens", allocatedTokens.String() + " GRT"},
+		{"Created at Epoch", allocationData.CreatedAtEpoch.String()},
+		{"Closed at Epoch", allocationData.ClosedAtEpoch.String()},
+		{"AccRewards Per Allocated Tokens", accRewardsPerAllocatedToken.String() + " GRT"},
+		{"Effective Allocation", effectiveAllocation.String() + " GRT"},
+		{"Collected Fees", allocationData.CollectedFees},
+		{"State", allocationState},
+	})
+	ta.SetCaption("State: 1 - Active, 2 - ? ,3 - Closed, 4 - Claimed")
+	ta.SetStyle(table.StyleLight)
+	ta.Style().Options.DrawBorder = true
+	ta.Style().Options.SeparateRows = true
+	ta.Render()
+	return nil
+}
+
+func closeAllocation(ctx context.Context, ethNode, contractAddress, mnemonic, hdWalletPath, allocationID, poi string) error {
+	if (len(poi) != 3) && (len(poi) != 66) {
+		return errors.New("invalid POI provided")
+	}
+
+	account, privateKey, err := eth.GetWalletAccount(mnemonic, hdWalletPath)
+	if err != nil {
+		return err
+	}
+
+	rpcClient, err := rpc.Dial(ethNode)
+	if err != nil {
+		return err
+	}
+
+	ethClient := ethclient.NewClient(rpcClient)
+
+	e := eth.Service{
+		Client: ethClient,
+	}
+
+	blockNumber, err := e.Client.BlockNumber(context.Background())
+	if err != nil {
+		return err
+	}
+
+	balance, err := e.Client.BalanceAt(context.Background(), account.Address, big.NewInt(int64(blockNumber)))
+	if err != nil {
+		return err
+	}
+
+	normalizedBalance, err := utils.ToDecimal(balance, 18)
+	if err != nil {
+		return err
+	}
+
+	tx, err := e.CloseAllocation(privateKey, account.Address.String(), contractAddress, allocationID, poi)
+	if err != nil {
+		return err
+	}
+	estimatedFee, err := utils.ToDecimal(tx.Cost(), 18)
+	if err != nil {
+		return err
+	}
+
+	normalizedGasFeeCap, err := utils.ToDecimal(tx.GasFeeCap(), 18)
+	if err != nil {
+		return err
+	}
+
+	normalizedGasTipCap, err := utils.ToDecimal(tx.GasTipCap(), 18)
+	if err != nil {
+		return err
+	}
+
+	tc := table.NewWriter()
+	tc.SetOutputMirror(os.Stdout)
+	tc.AppendHeader(table.Row{"Transaction details"})
+	tc.AppendRows([]table.Row{
+		{"From Address", account.Address},
+		{"ETH Balance", normalizedBalance.String() + " ETH"},
+		{"To Contract", contractAddress},
+		{"Nonce", tx.Nonce()},
+		{"ChainID", tx.ChainId()},
+		{"GasLimit", tx.Gas()},
+		{"GasFeeCap", normalizedGasFeeCap.String() + " ETH"},
+		{"GasTipCap", normalizedGasTipCap.String() + " ETH"},
+		{"Estimated Fee", estimatedFee.String() + " ETH"},
+		{"Allocation ID", allocationID},
+		{"POI", poi},
+		{"ETH Node", ethNode},
+	})
+	tc.SetStyle(table.StyleLight)
+	tc.Style().Options.DrawBorder = true
+	tc.Style().Options.SeparateRows = true
+	tc.Render()
+
+	fmt.Println("You are using not reference software, beware of a possible violation of the arbitration charter. ")
+	fmt.Printf("Confirm transaction to send? (y)es or (n)o: ")
+	if askForConfirmation() {
+		err := e.Client.SendTransaction(context.Background(), tx)
+		if err != nil {
+			return err
+		}
+		fmt.Println("\nTransaction sent, txid: ", tx.Hash().String())
 	}
 	return nil
 }

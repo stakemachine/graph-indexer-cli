@@ -15,17 +15,19 @@ import (
 
 func main() {
 	var (
-		rootFlagSet  = flag.NewFlagSet("graph-indexer", flag.ExitOnError)
-		rulesFlagSet = flag.NewFlagSet("graph-indexer rules", flag.ExitOnError)
-		/*costFlagSet   = flag.NewFlagSet("graph-indexer cost", flag.ExitOnError)
-		statusFlagSet = flag.NewFlagSet("graph-indexer status", flag.ExitOnError) */
+		rootFlagSet     = flag.NewFlagSet("graph-indexer", flag.ExitOnError)
+		rulesFlagSet    = flag.NewFlagSet("graph-indexer rules", flag.ExitOnError)
 		verbose         = rootFlagSet.Bool("v", false, "increase log verbosity")
 		agentHost       = rootFlagSet.String("indexer-agent", "http://localhost:8000", "Indexer Agent Mgmt API Host")
-		networkSubgraph = rootFlagSet.String("network-subgraph", "https://api.thegraph.com/subgraphs/name/graphprotocol/graph-network-testnet", "Network Subgraph Endpoint")
+		networkSubgraph = rootFlagSet.String("network-subgraph", "https://gateway.thegraph.com/network", "Network Subgraph Endpoint")
 		indexNode       = rootFlagSet.String("index-node", "http://localhost:8030/graphql", "Index or query node graphql endpoint")
 		ethNode         = rootFlagSet.String("eth-node", "https://cloudflare-eth.com/", "Ethereum Node address")
+		networkID       = rootFlagSet.String("eth-network-id", "mainnet", "Ethereum Network ID")
 		httpTimeout     = rootFlagSet.Int("timeout", 15, "HTTP timeout")
+		hdWalletPath    = rootFlagSet.String("hd-wallet-path", "m/44'/60'/0'/0/0", "HD Wallet Path")
+		mnemonic        = rootFlagSet.String("mnemonic", "", "Operator mnemonic phrase")
 	)
+
 	httpClient := http.Client{
 		Timeout: time.Duration(*httpTimeout) * time.Second,
 	}
@@ -205,10 +207,59 @@ func main() {
 		},
 	}
 
+	allocationsClose := &ffcli.Command{
+		Name:       "close",
+		ShortUsage: "graph-indexer allocations get",
+		ShortHelp:  "Close an allocation",
+		Exec: func(ctx context.Context, args []string) error {
+			var stakingContractAddress string
+			switch *networkID {
+			case "mainnet":
+				stakingContractAddress = "0xF55041E37E12cD407ad00CE2910B8269B01263b9"
+			case "rinkeby":
+				stakingContractAddress = "0x2d44C0e097F6cD0f514edAC633d82E01280B4A5c"
+			default:
+				fmt.Printf("Unsupported Network ID: %s.\n", *networkID)
+				os.Exit(1)
+			}
+			return closeAllocation(ctx, *ethNode, stakingContractAddress, *mnemonic, *hdWalletPath, args[0], args[1])
+		},
+	}
+
+	allocationsGet := &ffcli.Command{
+		Name:       "get",
+		ShortUsage: "graph-indexer allocations close <AllocationID> <POI>",
+		ShortHelp:  "Get allocation info",
+		Exec: func(ctx context.Context, args []string) error {
+			var stakingContractAddress string
+			switch *networkID {
+			case "mainnet":
+				stakingContractAddress = "0xF55041E37E12cD407ad00CE2910B8269B01263b9"
+			case "rinkeby":
+				stakingContractAddress = "0x2d44C0e097F6cD0f514edAC633d82E01280B4A5c"
+			default:
+				fmt.Printf("Unsupported Network ID: %s.\n", *networkID)
+				os.Exit(1)
+			}
+			return getAllocation(ctx, *ethNode, stakingContractAddress, args[0])
+		},
+	}
+
+	allocations := &ffcli.Command{
+		Name:        "allocations",
+		ShortUsage:  "graph-indxer allocations [<arg> ...]",
+		ShortHelp:   "Get info and manage allocations ",
+		Subcommands: []*ffcli.Command{allocationsGet, allocationsClose},
+		Exec: func(context.Context, []string) error {
+			fmt.Printf(*agentHost)
+			return flag.ErrHelp
+		},
+	}
+
 	root := &ffcli.Command{
 		ShortUsage:  "graph-indexer [flags] <subcommand>",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{status, rules, cost, signals, poi},
+		Subcommands: []*ffcli.Command{status, rules, cost, signals, poi, allocations},
 		Options:     []ff.Option{ff.WithEnvVarPrefix("GRAPH")},
 		Exec: func(context.Context, []string) error {
 			return flag.ErrHelp
