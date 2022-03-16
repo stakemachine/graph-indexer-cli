@@ -209,7 +209,7 @@ func main() {
 
 	allocationsClose := &ffcli.Command{
 		Name:       "close",
-		ShortUsage: "graph-indexer allocations get",
+		ShortUsage: "graph-indexer allocations close",
 		ShortHelp:  "Close an allocation",
 		Exec: func(ctx context.Context, args []string) error {
 			var stakingContractAddress string

@@ -3,7 +3,7 @@ module github.com/stakemachine/graph-indexer-cli
 go 1.17
 
 require (
-	github.com/ethereum/go-ethereum v1.10.15
+	github.com/ethereum/go-ethereum v1.10.16
 	github.com/jedib0t/go-pretty/v6 v6.2.5
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
 	github.com/mr-tron/base58 v1.2.0
@@ -16,7 +16,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
-	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
+	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/google/uuid v1.1.5 // indirect
