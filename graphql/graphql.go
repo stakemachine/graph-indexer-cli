@@ -3,6 +3,8 @@ package graphql
 import (
 	"context"
 	"errors"
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/shurcooL/graphql"
@@ -18,7 +20,9 @@ func (gs *GraphService) GetStatus() (Status, error) {
 			Channels IndexerEndpoint
 			Status   IndexerEndpoint
 		} `graphql:"indexerEndpoints"`
-		IndexingRules []IndexingRule `graphql:"indexingRules(merged: true)"`
+		IndexerDeployments []IndexerDeployment `graphql:"indexerDeployments"`
+		IndexingRules      []IndexingRule      `graphql:"indexingRules(merged: true)"`
+		IndexerAllocations []IndexerAllocation `graphql:"indexerAllocations"`
 	}
 	err := gs.Client.Query(context.Background(), &q, nil)
 	if err != nil {
@@ -27,7 +31,9 @@ func (gs *GraphService) GetStatus() (Status, error) {
 	status := Status{
 		q.IndexerRegistration,
 		q.IndexerEndpoints,
+		q.IndexerDeployments,
 		q.IndexingRules,
+		q.IndexerAllocations,
 	}
 	return status, nil
 }
@@ -35,11 +41,11 @@ func (gs *GraphService) GetStatus() (Status, error) {
 func (gs *GraphService) GetIndexingRule(id string) (IndexingRule, error) {
 	variables := make(map[string]interface{})
 	if id == "all" {
-		return IndexingRule{}, errors.New("Use status command to get all rules")
+		return IndexingRule{}, errors.New("use status command to get all rules")
 	}
-	variables["deployment"] = graphql.String(id)
+	variables["identifier"] = graphql.String(id)
 	var q struct {
-		IndexingRule IndexingRule `graphql:"indexingRule(deployment:$deployment, merged: true)"`
+		IndexingRule IndexingRule `graphql:"indexingRule(identifier:$identifier, merged: true)"`
 	}
 	err := gs.Client.Query(context.Background(), &q, variables)
 	if err != nil {
@@ -48,19 +54,74 @@ func (gs *GraphService) GetIndexingRule(id string) (IndexingRule, error) {
 	return q.IndexingRule, nil
 }
 
+func (gs *GraphService) SetIndexingRule(deploymentID string, args []string) error {
+	if len(args)%2 != 0 {
+		return errors.New("an uneven number of key/value pairs was passed")
+	}
+
+	rulesMap := make(map[string]string)
+	for i := 0; i < len(args); i += 2 {
+		rulesMap[args[i]] = args[i+1]
+	}
+
+	var m struct {
+		IndexingRule IndexingRule `graphql:"setIndexingRule(rule:{identifier:$identifier,identifierType:$identifierType,allocationAmount:$allocationAmount,allocationLifetime:$allocationLifetime,parallelAllocations:$parallelAllocations,maxAllocationPercentage:$maxAllocationPercentage,minSignal:$minSignal,maxSignal:$maxSignal,minStake:$minStake,minAverageQueryFees:$minAverageQueryFees,custom:$custom,decisionBasis:$decisionBasis})"`
+	}
+	var deployment string
+	var err error
+	if deploymentID != "global" && strings.HasPrefix(deploymentID, "Qm") {
+		deployment, err = utils.SubgraphHashToHex(deploymentID)
+		if err != nil {
+			return err
+		}
+	} else {
+		deployment = deploymentID
+	}
+
+	variables := make(map[string]interface{})
+	variables["identifier"] = graphql.String(deployment)
+	for i, p := range rulesMap {
+		switch i {
+		case "parallelAllocations":
+			var parallelAllocations int
+			parallelAllocations, err = strconv.Atoi(rulesMap["parallelAllocations"])
+			if err != nil {
+				return err
+			}
+			if parallelAllocations > 0 && parallelAllocations <= math.MaxInt32 {
+				variables[i] = graphql.Int(parallelAllocations)
+			}
+		case "allocationAmount":
+			allocationAmount, e := utils.ToWei(p, 18)
+			if e != nil {
+				return e
+			}
+			variables[i] = graphql.String(allocationAmount.String())
+		default:
+			variables[i] = graphql.String(p)
+		}
+	}
+
+	err = gs.Client.Mutate(context.Background(), &m, variables)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (gs *GraphService) DeleteIndexingRule(deploymentID string) (bool, error) {
 	var m struct {
 		DeleteIndexingRule graphql.Boolean `graphql:"deleteIndexingRule(deployment:$deployment)"`
 	}
 	var deployment string
 	var err error
-	if deploymentID != "global" {
+	if deploymentID != "global" && strings.HasPrefix(deploymentID, "Qm") {
 		deployment, err = utils.SubgraphHashToHex(deploymentID)
 		if err != nil {
 			return false, err
 		}
 	} else {
-		return false, errors.New("Cannot delete global rule")
+		return false, errors.New("cannot delete global rule")
 	}
 
 	variables := map[string]interface{}{

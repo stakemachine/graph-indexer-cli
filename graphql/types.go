@@ -8,8 +8,11 @@ type GraphService struct {
 }
 
 type IndexingRule struct {
-	Deployment              string
+	Identifier              string
+	IdentifierType          string
 	AllocationAmount        string
+	AllocationLifetime      int
+	AutoRenewal             bool
 	ParallelAllocations     int
 	MaxAllocationPercentage string
 	MinSignal               string
@@ -18,6 +21,38 @@ type IndexingRule struct {
 	MinAverageQueryFees     string
 	Custom                  string
 	DecisionBasis           string
+	RequireSupported        bool
+}
+
+type BlockPointer struct {
+	Number int
+	Hash   string
+}
+
+type ChainIndexingStatus struct {
+	Network        string
+	LatestBlock    BlockPointer
+	ChainHeadBlock BlockPointer
+	EarliestBlock  BlockPointer
+}
+
+type IndexerDeployment struct {
+	SubgraphDeployment string
+	Synced             bool
+	Health             string
+	FatalError         string
+	Node               string
+	Chains             []ChainIndexingStatus
+}
+
+type IndexerAllocation struct {
+	ID                 string
+	AllocatedTokens    string
+	CreatedAtEpoch     int
+	ClosedAtEpoch      int
+	SubgraphDeployment string
+	SignalledTokens    string
+	StakedTokens       string
 }
 
 type GeoLocation struct {
@@ -57,7 +92,9 @@ type Status struct {
 		Channels IndexerEndpoint
 		Status   IndexerEndpoint
 	}
-	IndexingRules []IndexingRule
+	IndexerDeployments []IndexerDeployment
+	IndexingRules      []IndexingRule
+	IndexerAllocations []IndexerAllocation
 }
 
 type Allocation struct {

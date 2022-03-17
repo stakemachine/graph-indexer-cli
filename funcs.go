@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"math/big"
 	"net/http"
 	"os"
@@ -44,38 +43,87 @@ func askForConfirmation() bool {
 	}
 }
 
+func printIndexerDeployments(indexerDeployments []mgmt.IndexerDeployment) error {
+	if len(indexerDeployments) >= 1 {
+		fmt.Println("Indexer Deployments")
+	} else {
+		fmt.Println("No active deployments")
+	}
+	td := table.NewWriter()
+	td.SetOutputMirror(os.Stdout)
+	td.AppendHeader(table.Row{"subgraphDeployment", "synced", "health", "fatalError", "node", "network", "latestBlock", "chainHeadBlock", "earliestBlock"})
+	for _, d := range indexerDeployments {
+		td.AppendRow(table.Row{d.SubgraphDeployment, d.Synced, d.Health, d.FatalError, d.Node, d.Chains[0].Network, d.Chains[0].LatestBlock.Number, d.Chains[0].ChainHeadBlock.Number, d.Chains[0].EarliestBlock.Number})
+		td.AppendSeparator()
+	}
+	td.SetStyle(table.StyleLight)
+	td.Style().Format.Header = text.FormatDefault
+	td.Render()
+	return nil
+}
+
+func printIndexerAllocations(indexerAllocations []mgmt.IndexerAllocation) error {
+	if len(indexerAllocations) >= 1 {
+		fmt.Println("Indexer Allocations")
+	} else {
+		fmt.Println("No active allocations")
+	}
+	ta := table.NewWriter()
+	ta.SetOutputMirror(os.Stdout)
+	ta.AppendHeader(table.Row{"id", "subgraphDeployment", "allocatedTokens", "createdAtEpoch", "signalledTokens", "stakedTokens"})
+	for _, a := range indexerAllocations {
+		allocatedTokens, err := utils.ToDecimal(a.AllocatedTokens, 18)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		signalledTokens, err := utils.ToDecimal(a.SignalledTokens, 18)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		stakedTokens, err := utils.ToDecimal(a.StakedTokens, 18)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		ta.AppendRow(table.Row{a.ID, a.SubgraphDeployment, allocatedTokens, a.CreatedAtEpoch, signalledTokens, stakedTokens})
+		ta.AppendSeparator()
+	}
+	ta.SetStyle(table.StyleLight)
+	ta.Style().Format.Header = text.FormatDefault
+	ta.Render()
+	return nil
+}
+
 func printRules(rules []mgmt.IndexingRule) error {
-	if len(rules) > 1 {
+	if len(rules) >= 1 {
 		fmt.Println("Indexing Rules")
 	}
 	ti := table.NewWriter()
 	ti.SetOutputMirror(os.Stdout)
-	ti.AppendHeader(table.Row{"deployment", "allocationAmount", "parallelAllocations", "maxAllocationPercentage", "minSignal", "maxSignal", "minStake", "minAverageQueryFees", "custom", "decisionBasis"})
+	ti.AppendHeader(table.Row{"identifier", "identifierType", "allocationAmount", "allocationLifetime", "autoRenewal", "parallelAllocations", "maxAllocationPercentage", "minSignal", "maxSignal", "minStake", "minAverageQueryFees", "custom", "decisionBasis", "requireSupported"})
 	for _, r := range rules {
 
 		encoded := ""
 		var err error
-		if r.Deployment != "global" {
+		if r.Identifier != "global" && strings.HasPrefix(r.Identifier, "0x") {
 
-			encoded, err = utils.SubgraphHexToHash(r.Deployment)
+			encoded, err = utils.SubgraphHexToHash(r.Identifier)
 
 			if err != nil {
 				return err
 			}
 
 		} else {
-			encoded = r.Deployment
+			encoded = r.Identifier
 		}
 		allocationAmount, err := utils.ToDecimal(r.AllocationAmount, 18)
 		if err != nil {
-			fmt.Println("Error:", err)
+			fmt.Println("Error:", err, encoded)
 		}
-		ti.AppendRow(table.Row{encoded, allocationAmount, r.ParallelAllocations, r.MaxAllocationPercentage, r.MinSignal, r.MaxSignal, r.MinStake, r.MinAverageQueryFees, r.Custom, r.DecisionBasis})
+		ti.AppendRow(table.Row{encoded, r.IdentifierType, allocationAmount, r.AllocationLifetime, r.AutoRenewal, r.ParallelAllocations, r.MaxAllocationPercentage, r.MinSignal, r.MaxSignal, r.MinStake, r.MinAverageQueryFees, r.Custom, r.DecisionBasis, r.RequireSupported})
 		ti.AppendSeparator()
 	}
 	ti.SetStyle(table.StyleLight)
 	ti.Style().Format.Header = text.FormatDefault
-
 	ti.Render()
 	return nil
 }
@@ -168,11 +216,17 @@ func status(ctx context.Context, agentHost string, networkSubgraph string, httpC
 	ti.SetStyle(table.StyleLight)
 	ti.Render()
 	fmt.Println("Current epoch:", currentEpoch.CurrentEpoch)
+
+	err = printIndexerAllocations(status.IndexerAllocations)
+	if err != nil {
+		return err
+	}
+
 	if len(allos) > 0 {
 		fmt.Printf("Active allocations (%d)\n", len(allos))
 		ta := table.NewWriter()
 		ta.SetOutputMirror(os.Stdout)
-		ta.AppendHeader(table.Row{"Allocation ID", "Subgraph Deployment ID", "Subgraph Name", "Created at Epoch", "Allocated tokens"})
+		ta.AppendHeader(table.Row{"Allocation ID", "Subgraph Deployment ID", "Subgraph Name", "Created at Epoch", "Allocated tokens", "Signalled", "Staked Tokens"})
 		for _, a := range allos {
 			subgraphHash, e := utils.SubgraphHexToHash(a.SubgraphDeployment.ID)
 			if e != nil {
@@ -190,6 +244,11 @@ func status(ctx context.Context, agentHost string, networkSubgraph string, httpC
 		ta.Render()
 	} else {
 		fmt.Println("No active allocations")
+	}
+
+	err = printIndexerDeployments(status.IndexerDeployments)
+	if err != nil {
+		return err
 	}
 
 	err = printRules(status.IndexingRules)
@@ -231,60 +290,18 @@ func getRule(ctx context.Context, agentHost string, args []string, httpClient ht
 }
 
 func setRule(ctx context.Context, agentHost string, deploymentID string, args []string, httpClient http.Client) error {
-	if len(args)%2 != 0 {
-		return errors.New("an uneven number of key/value pairs was passed")
-	}
 	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
-	rulesMap := make(map[string]string)
-	for i := 0; i < len(args); i += 2 {
-		rulesMap[args[i]] = args[i+1]
-	}
-
-	var m struct {
-		IndexingRule mgmt.IndexingRule `graphql:"setIndexingRule(rule:{deployment:$deployment, allocationAmount:$allocationAmount,parallelAllocations:$parallelAllocations,maxAllocationPercentage:$maxAllocationPercentage,minSignal:$minSignal,maxSignal:$maxSignal,minStake:$minStake,minAverageQueryFees:$minAverageQueryFees,custom:$custom,decisionBasis:$decisionBasis})"`
-	}
-	var deployment string
-	var err error
-	if deploymentID != "global" {
-		deployment, err = utils.SubgraphHashToHex(deploymentID)
-		if err != nil {
-			return err
-		}
-	} else {
-		deployment = deploymentID
-	}
-
-	variables := make(map[string]interface{})
-	variables["deployment"] = graphql.String(deployment)
-	for i, p := range rulesMap {
-		switch i {
-		case "parallelAllocations":
-			var parallelAllocations int
-			parallelAllocations, err = strconv.Atoi(rulesMap["parallelAllocations"])
-			if err != nil {
-				return err
-			}
-			if parallelAllocations > 0 && parallelAllocations <= math.MaxInt32 {
-				variables[i] = graphql.Int(parallelAllocations)
-			}
-		case "allocationAmount":
-			allocationAmount, e := utils.ToWei(p, 18)
-			if e != nil {
-				return e
-			}
-			variables[i] = graphql.String(allocationAmount.String())
-		default:
-			variables[i] = graphql.String(p)
-		}
-	}
-
-	err = gqlClient.Client.Mutate(context.Background(), &m, variables)
+	err := gqlClient.SetIndexingRule(deploymentID, args)
 	if err != nil {
 		return err
 	}
 	var rules []mgmt.IndexingRule
-	rules = append(rules, m.IndexingRule)
+	ir, err := gqlClient.GetIndexingRule(deploymentID)
+	if err != nil {
+		return err
+	}
+	rules = append(rules, ir)
 	err = printRules(rules)
 	if err != nil {
 		return err
