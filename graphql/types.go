@@ -36,11 +36,16 @@ type ChainIndexingStatus struct {
 	EarliestBlock  BlockPointer
 }
 
+type IndexingError struct {
+	Handler string
+	Message string
+}
+
 type IndexerDeployment struct {
 	SubgraphDeployment string
 	Synced             bool
 	Health             string
-	FatalError         string
+	FatalError         IndexingError
 	Node               string
 	Chains             []ChainIndexingStatus
 }

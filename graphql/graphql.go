@@ -111,7 +111,7 @@ func (gs *GraphService) SetIndexingRule(deploymentID string, args []string) erro
 
 func (gs *GraphService) DeleteIndexingRule(deploymentID string) (bool, error) {
 	var m struct {
-		DeleteIndexingRule graphql.Boolean `graphql:"deleteIndexingRule(deployment:$deployment)"`
+		DeleteIndexingRule graphql.Boolean `graphql:"deleteIndexingRule(identifier:$identifier)"`
 	}
 	var deployment string
 	var err error
@@ -120,12 +120,14 @@ func (gs *GraphService) DeleteIndexingRule(deploymentID string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+	} else if strings.HasPrefix(deploymentID, "0x") {
+		deployment = deploymentID
 	} else {
 		return false, errors.New("cannot delete global rule")
 	}
 
 	variables := map[string]interface{}{
-		"deployment": graphql.String(deployment),
+		"identifier": graphql.String(deployment),
 	}
 
 	err = gs.Client.Mutate(context.Background(), &m, variables)
