@@ -232,8 +232,8 @@ github.com/influxdata/usage-client v0.0.0-20160829180054-6d3895376368/go.mod h1:
 github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458/go.mod h1:QPH045xvCAeXUZOxsnwmrtiCoxIr9eob+4orBN1SBKc=
 github.com/jackpal/go-nat-pmp v1.0.2 h1:KzKSgb7qkJvOUTqYl9/Hg/me3pWgBmERKrTGD7BdWus=
 github.com/jackpal/go-nat-pmp v1.0.2/go.mod h1:QPH045xvCAeXUZOxsnwmrtiCoxIr9eob+4orBN1SBKc=
-github.com/jedib0t/go-pretty/v6 v6.2.5 h1:4faq6Fne+0du3qZAPOJcBFpAnt4AlxUJAKa1vAdvfrQ=
-github.com/jedib0t/go-pretty/v6 v6.2.5/go.mod h1:FMkOpgGD3EZ91cW8g/96RfxoV7bdeJyzXPYgz1L1ln0=
+github.com/jedib0t/go-pretty/v6 v6.3.0 h1:QQ5yZPDUMEjbZRXDJtZlvwfDQqCYFaxV3yEzTkogUgk=
+github.com/jedib0t/go-pretty/v6 v6.3.0/go.mod h1:FMkOpgGD3EZ91cW8g/96RfxoV7bdeJyzXPYgz1L1ln0=
 github.com/jedisct1/go-minisign v0.0.0-20190909160543-45766022959e/go.mod h1:G1CVv03EnqU1wYL2dFwXxW2An0az9JTl/ZsqXQeBlkU=
 github.com/jessevdk/go-flags v0.0.0-20141203071132-1679536dcc89/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
