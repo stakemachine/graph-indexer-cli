@@ -57,7 +57,7 @@ func main() {
 		ShortHelp:  "Get one or more indexing rules",
 		//	FlagSet:    stakeFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
-			return getRule(ctx, *agentHost, args, httpClient)
+			return getIndexingRule(ctx, *agentHost, args, httpClient)
 		},
 	}
 
@@ -68,7 +68,7 @@ func main() {
 		// Subcommands: []*ffcli.Command{rulesSetDecisionBasis, rulesSetAllocationAmmount},
 
 		Exec: func(ctx context.Context, args []string) error {
-			return setRule(ctx, *agentHost, args[0], args[1:], httpClient)
+			return setIndexingRule(ctx, *agentHost, args[0], args[1:], httpClient)
 		},
 	}
 	rulesStart := &ffcli.Command{
@@ -108,7 +108,7 @@ func main() {
 		FlagSet:    rulesFlagSet,
 		//	FlagSet:    stakeFlagSet,
 		Exec: func(ctx context.Context, args []string) error {
-			return deleteRule(ctx, *agentHost, args, httpClient)
+			return deleteIndexingRule(ctx, *agentHost, args, httpClient)
 		},
 	}
 

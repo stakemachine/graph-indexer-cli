@@ -43,11 +43,16 @@ func (gs *GraphService) GetIndexingRule(id string) (IndexingRule, error) {
 	if id == "all" {
 		return IndexingRule{}, errors.New("use status command to get all rules")
 	}
-	variables["identifier"] = graphql.String(id)
+
+	identifier, err := utils.ReturnIdentifier(id)
+	if err != nil {
+		return IndexingRule{}, err
+	}
+	variables["identifier"] = graphql.String(identifier)
 	var q struct {
 		IndexingRule IndexingRule `graphql:"indexingRule(identifier:$identifier, merged: true)"`
 	}
-	err := gs.Client.Query(context.Background(), &q, variables)
+	err = gs.Client.Query(context.Background(), &q, variables)
 	if err != nil {
 		return IndexingRule{}, err
 	}
@@ -67,15 +72,20 @@ func (gs *GraphService) SetIndexingRule(deploymentID string, args []string) erro
 	var m struct {
 		IndexingRule IndexingRule `graphql:"setIndexingRule(rule:{identifier:$identifier,identifierType:$identifierType,allocationAmount:$allocationAmount,allocationLifetime:$allocationLifetime,parallelAllocations:$parallelAllocations,maxAllocationPercentage:$maxAllocationPercentage,minSignal:$minSignal,maxSignal:$maxSignal,minStake:$minStake,minAverageQueryFees:$minAverageQueryFees,custom:$custom,decisionBasis:$decisionBasis})"`
 	}
-	var deployment string
-	var err error
-	if deploymentID != "global" && strings.HasPrefix(deploymentID, "Qm") {
-		deployment, err = utils.SubgraphHashToHex(deploymentID)
-		if err != nil {
-			return err
-		}
-	} else {
-		deployment = deploymentID
+	/* 	var deployment string
+	   	var err error
+	   	if deploymentID != "global" && strings.HasPrefix(deploymentID, "Qm") {
+	   		deployment, err = utils.SubgraphHashToHex(deploymentID)
+	   		if err != nil {
+	   			return err
+	   		}
+	   	} else {
+	   		deployment = deploymentID
+	   	} */
+
+	deployment, err := utils.ReturnIdentifier(deploymentID)
+	if err != nil {
+		return err
 	}
 
 	variables := make(map[string]interface{})
@@ -113,17 +123,10 @@ func (gs *GraphService) DeleteIndexingRule(deploymentID string) (bool, error) {
 	var m struct {
 		DeleteIndexingRule graphql.Boolean `graphql:"deleteIndexingRule(identifier:$identifier)"`
 	}
-	var deployment string
-	var err error
-	if deploymentID != "global" && strings.HasPrefix(deploymentID, "Qm") {
-		deployment, err = utils.SubgraphHashToHex(deploymentID)
-		if err != nil {
-			return false, err
-		}
-	} else if strings.HasPrefix(deploymentID, "0x") {
-		deployment = deploymentID
-	} else {
-		return false, errors.New("cannot delete global rule")
+
+	deployment, err := utils.ReturnIdentifier(deploymentID)
+	if err != nil {
+		return false, err
 	}
 
 	variables := map[string]interface{}{
@@ -137,7 +140,7 @@ func (gs *GraphService) DeleteIndexingRule(deploymentID string) (bool, error) {
 	return true, nil
 }
 
-func (gs *GraphService) GetModelsWithVariables() ([]CostModel, error) {
+func (gs *GraphService) GetCostModelsWithVariables() ([]CostModel, error) {
 	var q struct {
 		CostModels []CostModel `graphql:"costModels"`
 	}
@@ -148,7 +151,7 @@ func (gs *GraphService) GetModelsWithVariables() ([]CostModel, error) {
 	return q.CostModels, nil
 }
 
-func (gs *GraphService) SetModel(model CostModel) (CostModel, error) {
+func (gs *GraphService) SetCostModel(model CostModel) (CostModel, error) {
 	var m struct {
 		CostModel CostModel `graphql:"setCostModel(costModel:{deployment:$deployment, model:$model, variables:$variables})"`
 	}

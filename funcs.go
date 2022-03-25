@@ -93,7 +93,7 @@ func printIndexerAllocations(indexerAllocations []mgmt.IndexerAllocation) error 
 	return nil
 }
 
-func printRules(rules []mgmt.IndexingRule) error {
+func printIndexingRules(rules []mgmt.IndexingRule) error {
 	if len(rules) >= 1 {
 		fmt.Println("Indexing Rules")
 	}
@@ -251,7 +251,7 @@ func status(ctx context.Context, agentHost string, networkSubgraph string, httpC
 		return err
 	}
 
-	err = printRules(status.IndexingRules)
+	err = printIndexingRules(status.IndexingRules)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func status(ctx context.Context, agentHost string, networkSubgraph string, httpC
 	return nil
 }
 
-func getRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
+func getIndexingRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
 	if len(args) != 1 {
 		return errors.New("rules get requires one hash argument")
 	}
@@ -282,14 +282,14 @@ func getRule(ctx context.Context, agentHost string, args []string, httpClient ht
 	}
 	var rules []mgmt.IndexingRule
 	rules = append(rules, r)
-	err = printRules(rules)
+	err = printIndexingRules(rules)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func setRule(ctx context.Context, agentHost string, deploymentID string, args []string, httpClient http.Client) error {
+func setIndexingRule(ctx context.Context, agentHost string, deploymentID string, args []string, httpClient http.Client) error {
 	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 	err := gqlClient.SetIndexingRule(deploymentID, args)
@@ -302,14 +302,14 @@ func setRule(ctx context.Context, agentHost string, deploymentID string, args []
 		return err
 	}
 	rules = append(rules, ir)
-	err = printRules(rules)
+	err = printIndexingRules(rules)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func deleteRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
+func deleteIndexingRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
 	if len(args) != 1 {
 		return errors.New("rules get requires one hash argument")
 	}
@@ -329,7 +329,7 @@ func deleteRule(ctx context.Context, agentHost string, args []string, httpClient
 func getAllModelsWithVariables(agentHost string, httpClient http.Client) error {
 	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
-	modelsWithVariables, err := gqlClient.GetModelsWithVariables()
+	modelsWithVariables, err := gqlClient.GetCostModelsWithVariables()
 	if err != nil {
 		return err
 	}
@@ -360,7 +360,7 @@ func setCostModel(agentHost string, deploymentID string, args []string, httpClie
 
 	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
-	modelResponse, err := gqlClient.SetModel(costModel)
+	modelResponse, err := gqlClient.SetCostModel(costModel)
 	if err != nil {
 		return err
 	}
@@ -382,6 +382,7 @@ func signals(ctx context.Context, networkSubgraph string, httpClient http.Client
 	}
 	totalSignalAmount := big.NewFloat(0)
 	totalSignalledTokens := big.NewFloat(0)
+	totalStakedTokens := big.NewFloat(0)
 	for _, s := range subgraphDeployments {
 		subgraphSignalAmount, ok := new(big.Float).SetString(s.SignalAmount)
 		if !ok {
@@ -393,6 +394,11 @@ func signals(ctx context.Context, networkSubgraph string, httpClient http.Client
 			return errors.New("failed to convert signalled tokens to big.Float")
 		}
 		totalSignalledTokens = totalSignalledTokens.Add(totalSignalledTokens, subgraphSignalledTokens)
+		subgraphStakedTokens, ok := new(big.Float).SetString(s.StakedTokens)
+		if !ok {
+			return errors.New("failed to convert signalled tokens to big.Float")
+		}
+		totalStakedTokens = totalStakedTokens.Add(totalStakedTokens, subgraphStakedTokens)
 	}
 
 	sort.SliceStable(subgraphDeployments, func(i, j int) bool {
@@ -401,9 +407,11 @@ func signals(ctx context.Context, networkSubgraph string, httpClient http.Client
 		return numA.Cmp(numB) > 0
 	})
 
+	proportionBaseline := fmt.Sprintf("%.10f", new(big.Float).Quo(totalSignalAmount, totalStakedTokens))
+	fmt.Println("Baseline proportion: ", proportionBaseline)
 	ts := table.NewWriter()
 	ts.SetOutputMirror(os.Stdout)
-	ts.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Subgraph Original Name", "Signal Amount", "%", "Signalled Tokens", "%"})
+	ts.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Subgraph Original Name", "Signal Amount", "%", "Signalled Tokens", "%", "Proportion"})
 	for i, s := range subgraphDeployments {
 		subgraphDeploymentHash, err := utils.SubgraphHexToHash(s.ID)
 		if err != nil {
@@ -417,15 +425,20 @@ func signals(ctx context.Context, networkSubgraph string, httpClient http.Client
 		if !ok {
 			return errors.New("failed to convert signal amount to big.Int")
 		}
+		subgraphStakedTokens, ok := new(big.Float).SetString(s.StakedTokens)
+		if !ok {
+			return errors.New("failed to convert signal amount to big.Int")
+		}
 		percentageSignalAmount := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount))
 		percentageSignalledTokens := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalledTokens, totalSignalledTokens))
+		proportion := fmt.Sprintf("%.10f", new(big.Float).Quo(subgraphSignalAmount, subgraphStakedTokens))
 
 		signalledTokens, err := utils.ToDecimal(s.SignalledTokens, 18)
 		if err != nil {
 			return err
 		}
 		ts.AppendRows([]table.Row{
-			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentageSignalAmount, signalledTokens.Round(2).String(), percentageSignalledTokens},
+			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentageSignalAmount, signalledTokens.Round(2).String(), percentageSignalledTokens, proportion},
 		})
 	}
 

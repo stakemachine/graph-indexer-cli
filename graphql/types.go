@@ -131,6 +131,7 @@ type SubgraphDeployment struct {
 	OriginalName    string `json:"originalName"`
 	SignalAmount    string `json:"signalAmount"`
 	SignalledTokens string `json:"signalledTokens"`
+	StakedTokens    string `json:"stakedTokens"`
 }
 
 type ChainHeadBlock struct {

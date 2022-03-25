@@ -29,7 +29,41 @@ func SubgraphHashToHex(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return "0x" + strings.TrimPrefix(hex.EncodeToString(decoded), "1220"), nil
+	identifier := "0x" + strings.TrimPrefix(hex.EncodeToString(decoded), "1220")
+	if !CheckIdentifier(identifier) {
+		return "", err
+	}
+	return identifier, nil
+}
+
+func CheckIdentifier(s string) bool {
+	if strings.HasPrefix(s, "0x") && len(s) == 66 {
+		return true
+	}
+	return false
+}
+
+func ReturnIdentifier(s string) (string, error) {
+	var identifier string
+	var err error
+	switch {
+	case strings.HasPrefix(s, "Qm"):
+		identifier, err = SubgraphHashToHex(s)
+		if err != nil {
+			return "", err
+		}
+		if CheckIdentifier(identifier) {
+			return s, nil
+		}
+	case strings.HasPrefix(s, "0x"):
+		if CheckIdentifier(s) {
+			return s, nil
+		}
+		return "", err
+	default:
+		return "", errors.New("invalid identifier")
+	}
+	return identifier, nil
 }
 
 func ToDecimal(ivalue interface{}, decimals int) (decimal.Decimal, error) {
