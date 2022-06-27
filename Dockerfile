@@ -1,4 +1,4 @@
-FROM golang:1.18.0-alpine as builder
+FROM golang:1.18.3-alpine as builder
 
 COPY . /go/src/github.com/stakemachine/graph-indexer-cli
 WORKDIR /go/src/github.com/stakemachine/graph-indexer-cli
