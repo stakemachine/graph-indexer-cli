@@ -51,6 +51,12 @@ func TestSubgraphHexToHash(t *testing.T) {
 	}
 }
 
+func FuzzSubgraphHexToHash(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		SubgraphHexToHash(s)
+	})
+}
+
 func TestSubgraphHashToHex(t *testing.T) {
 	type args struct {
 		s string
@@ -103,6 +109,12 @@ func TestSubgraphHashToHex(t *testing.T) {
 			}
 		})
 	}
+}
+
+func FuzzSubgraphHashToHex(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		SubgraphHashToHex(s)
+	})
 }
 
 func TestCheckIdentifier(t *testing.T) {
@@ -159,6 +171,12 @@ func TestCheckIdentifier(t *testing.T) {
 	}
 }
 
+func FuzzCheckIdentifier(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		CheckIdentifier(s)
+	})
+}
+
 func TestReturnIdentifier(t *testing.T) {
 	type args struct {
 		s string
@@ -211,4 +229,10 @@ func TestReturnIdentifier(t *testing.T) {
 			}
 		})
 	}
+}
+
+func FuzzReturnIdentifier(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		ReturnIdentifier(s)
+	})
 }
