@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/ethereum/go-ethereum v1.10.19
-	github.com/jedib0t/go-pretty/v6 v6.3.3
+	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/peterbourgon/ff/v3 v3.1.2
@@ -32,6 +32,6 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
-	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
