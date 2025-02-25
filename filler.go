@@ -96,53 +96,71 @@ func CreateSubgraphsPool(subgraphs []mgmt.SubgraphDeployment, indexingStatuses [
 	subgraphsPool := SubgraphsPool{}
 	sort.Sort(subgraphDeployments)
 
+	indexingStatusMap := make(map[string]mgmt.IndexingStatus)
+	for _, status := range indexingStatuses {
+		indexingStatusMap[status.Subgraph] = status
+	}
+
+	var errors []error
+
 	for _, s := range subgraphDeployments.deployments {
 		availableCapacity, err := s.AvailableCapacity(&graphNetwork)
 		if err != nil {
-			fmt.Println(err)
+			errors = append(errors, err)
 			continue
 		}
 
-		for _, subgraph := range indexingStatuses {
-			subgraphHash, err := s.Hash()
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			if subgraph.Subgraph == subgraphHash && subgraph.Synced && subgraph.Health == "healthy" {
-				capacity, err := s.Capacity(&graphNetwork)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				currentRatio, err := s.CurrentRatio(&graphNetwork)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				stakedTokens, err := utils.ToDecimal(s.StakedTokens, 18)
-				if err != nil {
-					fmt.Println("subgraphStakedTokensDecimal error", err)
-					continue
-				}
-				signalledTokens, err := utils.ToDecimal(s.SignalledTokens, 18)
-				if err != nil {
-					fmt.Println("subgraphSignalledTokensDecimal error", err)
-					continue
-				}
-				subgraphsPool = append(subgraphsPool, SubgraphsPoolEntity{
-					SubgraphHash:      subgraphHash,
-					StakedTokens:      stakedTokens,
-					SignalledTokens:   signalledTokens,
-					Capacity:          capacity,
-					AvailableCapacity: availableCapacity,
-					Amount:            decimal.Decimal{},
-					CurrentRatio:      currentRatio,
-					PotentialRatio:    decimal.Decimal{},
-					Enabled:           true,
-				})
-			}
+		subgraphHash, err := s.Hash()
+		if err != nil {
+			errors = append(errors, err)
+			continue
 		}
+
+		status, exists := indexingStatusMap[subgraphHash]
+		if !exists || !status.Synced || status.Health != "healthy" {
+			continue
+		}
+
+		capacity, err := s.Capacity(&graphNetwork)
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+
+		currentRatio, err := s.CurrentRatio(&graphNetwork)
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+
+		stakedTokens, err := utils.ToDecimal(s.StakedTokens, 18)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("subgraphStakedTokensDecimal error: %w", err))
+			continue
+		}
+
+		signalledTokens, err := utils.ToDecimal(s.SignalledTokens, 18)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("subgraphSignalledTokensDecimal error: %w", err))
+			continue
+		}
+
+		subgraphsPool = append(subgraphsPool, SubgraphsPoolEntity{
+			SubgraphHash:      subgraphHash,
+			StakedTokens:      stakedTokens,
+			SignalledTokens:   signalledTokens,
+			Capacity:          capacity,
+			AvailableCapacity: availableCapacity,
+			Amount:            decimal.Decimal{},
+			CurrentRatio:      currentRatio,
+			PotentialRatio:    decimal.Decimal{},
+			Enabled:           true,
+		})
 	}
+
+	if len(errors) > 0 {
+		return subgraphsPool, fmt.Errorf("encountered errors: %v", errors)
+	}
+
 	return subgraphsPool, nil
 }
