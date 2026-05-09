@@ -30,7 +30,6 @@ func (gs *GraphService) GetStatus(protocolNetwork string) (Status, error) {
 		IndexerAllocations []IndexerAllocation `graphql:"indexerAllocations(protocolNetwork: $protocolNetwork)"`
 	}
 	err := gs.Client.Query(context.Background(), &q, variables)
-
 	if err != nil {
 		return Status{}, err
 	}
@@ -258,7 +257,7 @@ func (gs *GraphService) GetSubgraphDeploymentsSignalled() ([]SubgraphDeployment,
 	return q.SubgraphDeployments, nil
 }
 
-func (gs *GraphService) GetSubgraphDeploymentById(deployment string) (SubgraphDeployment, error) {
+func (gs *GraphService) GetSubgraphDeploymentByID(deployment string) (SubgraphDeployment, error) {
 	variables := map[string]interface{}{
 		"deployment": graphql.String(deployment),
 	}

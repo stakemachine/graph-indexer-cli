@@ -88,7 +88,7 @@ func (s SubgraphDeployments) Swap(i, j int) {
 	s.deployments[i], s.deployments[j] = s.deployments[j], s.deployments[i]
 }
 
-func CreateSubgraphsPool(subgraphs []mgmt.SubgraphDeployment, indexingStatuses []mgmt.IndexingStatus, graphNetwork mgmt.GraphNetwork, minAllocation string) (SubgraphsPool, error) {
+func CreateSubgraphsPool(subgraphs []mgmt.SubgraphDeployment, indexingStatuses []mgmt.IndexingStatus, graphNetwork mgmt.GraphNetwork, _ string) (SubgraphsPool, error) {
 	subgraphDeployments := SubgraphDeployments{
 		deployments:  subgraphs,
 		graphNetwork: &graphNetwork,

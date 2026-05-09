@@ -36,7 +36,7 @@ func main() {
 		Name:       "indexing",
 		ShortUsage: "graph-indexer status indexing",
 		ShortHelp:  "Get subgraphs indexing statuses",
-		Exec: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, _ []string) error {
 			return getIndexingStatuses(ctx, *indexNode, httpClient)
 		},
 	}
@@ -47,7 +47,7 @@ func main() {
 		ShortHelp:   "Check the status of an indexer",
 		Subcommands: []*ffcli.Command{statusIndexing},
 
-		Exec: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, _ []string) error {
 			return status(ctx, *agentHost, *networkSubgraph, httpClient)
 		},
 	}
@@ -77,7 +77,7 @@ func main() {
 		ShortUsage: "graph-indexer rules start",
 		ShortHelp:  "Always index a deployment (and start indexing it if necessary)",
 		//	FlagSet:    stakeFlagSet,
-		Exec: func(_ context.Context, args []string) error {
+		Exec: func(_ context.Context, _ []string) error {
 			return nil
 		},
 	}
@@ -87,7 +87,7 @@ func main() {
 		ShortUsage: "graph-indexer rules stop",
 		ShortHelp:  "Never index a deployment (and stop indexing it if necessary)",
 		//	FlagSet:    stakeFlagSet,
-		Exec: func(_ context.Context, args []string) error {
+		Exec: func(_ context.Context, _ []string) error {
 			return nil
 		},
 	}
@@ -97,7 +97,7 @@ func main() {
 		ShortUsage: "graph-indexer rules clear",
 		ShortHelp:  "Clear one or more indexing rules",
 		//	FlagSet:    stakeFlagSet,
-		Exec: func(_ context.Context, args []string) error {
+		Exec: func(_ context.Context, _ []string) error {
 			return nil
 		},
 	}
@@ -137,7 +137,7 @@ func main() {
 		ShortUsage: "graph-indexer cost set variables",
 		ShortHelp:  "Update cost model variables",
 		//	FlagSet:    stakeFlagSet,
-		Exec: func(_ context.Context, args []string) error {
+		Exec: func(_ context.Context, _ []string) error {
 			return nil
 		},
 	}
@@ -146,7 +146,7 @@ func main() {
 		ShortUsage: "graph-indexer cost get <deploymentID>",
 		ShortHelp:  "Get cost models and/or variables for one or all subgraphs",
 		//	FlagSet:    stakeFlagSet,
-		Exec: func(_ context.Context, args []string) error {
+		Exec: func(_ context.Context, _ []string) error {
 			return getAllModelsWithVariables(*agentHost, httpClient)
 		},
 	}
@@ -157,7 +157,7 @@ func main() {
 		Subcommands: []*ffcli.Command{costSetModel, costSetVariables},
 
 		//	FlagSet:    stakeFlagSet,
-		Exec: func(_ context.Context, args []string) error {
+		Exec: func(_ context.Context, _ []string) error {
 			return nil
 		},
 	}
@@ -177,7 +177,7 @@ func main() {
 		Name:       "signals",
 		ShortUsage: "graph-indexer signals",
 		ShortHelp:  "Get list of subgraph deployments with signals",
-		Exec: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, _ []string) error {
 			return signals(ctx, *networkSubgraph, *indexNode, httpClient)
 		},
 	}

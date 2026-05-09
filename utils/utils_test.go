@@ -178,8 +178,8 @@ func TestCheckIdentifier(t *testing.T) {
 }
 
 func FuzzCheckIdentifier(f *testing.F) {
-	f.Fuzz(func(t *testing.T, s string) {
-		_ = CheckIdentifier(s) // Explicitly acknowledge return value
+	f.Fuzz(func(_ *testing.T, s string) {
+		_ = CheckIdentifier(s)
 	})
 }
 
@@ -238,7 +238,7 @@ func TestReturnIdentifier(t *testing.T) {
 }
 
 func FuzzReturnIdentifier(f *testing.F) {
-	f.Fuzz(func(t *testing.T, s string) {
-		ReturnIdentifier(s)
+	f.Fuzz(func(_ *testing.T, s string) {
+		_, _ = ReturnIdentifier(s) //nolint:errcheck
 	})
 }
