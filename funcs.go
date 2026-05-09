@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/shopspring/decimal"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -107,7 +108,6 @@ func printIndexingRules(rules []mgmt.IndexingRule) error {
 		if r.Identifier != "global" && strings.HasPrefix(r.Identifier, "0x") {
 
 			encoded, err = utils.SubgraphHexToHash(r.Identifier)
-
 			if err != nil {
 				return err
 			}
@@ -157,7 +157,7 @@ func status(ctx context.Context, agentHost string, networkSubgraph string, httpC
 	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 
-	status, err := gqlClient.GetStatus()
+	status, err := gqlClient.GetStatus("arbitrum-one")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -373,14 +373,46 @@ func setCostModel(agentHost string, deploymentID string, args []string, httpClie
 	return nil
 }
 
-func signals(ctx context.Context, networkSubgraph string, httpClient http.Client) error {
+func signals(ctx context.Context, networkSubgraph, indexNode string, httpClient http.Client) error {
 	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
 	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
 	subgraphDeployments, err := subgraphAPIClient.GetSubgraphDeploymentsSignalled()
 	if err != nil {
 		return err
 	}
+	indexNodeAPI := graphql.NewClient(indexNode, &httpClient)
+	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
+
+	indexingStatuses, err := indexNodeAPIClient.GetIndexingStatuses()
+	if err != nil {
+		return err
+	}
+
+	availableStake := decimal.NewFromInt(264759)
+	adviceAllos := []struct {
+		hash         string
+		freeCapacity decimal.Decimal
+	}{}
+	fillCapacity := decimal.NewFromInt(0)
+	overCapacity := decimal.NewFromInt(0)
+	graphNetwork, err := subgraphAPIClient.GetCurrentEpoch()
+	if err != nil {
+		return err
+	}
+	totalTokensSignalled, ok := new(big.Float).SetString(graphNetwork.TotalTokensSignalled)
+	if !ok {
+		return errors.New("failed to convert signal amount to big.Float")
+	}
+	totalTokensAllocated, ok := new(big.Float).SetString(graphNetwork.TotalTokensAllocated)
+	if !ok {
+		return errors.New("failed to convert signal amount to big.Float")
+	}
+	fmt.Println("graphNetwork: ", graphNetwork.TotalTokensAllocated, graphNetwork.TotalTokensSignalled)
 	totalSignalAmount := big.NewFloat(0)
+	zero, ok := new(big.Float).SetString("1")
+	if !ok {
+		return errors.New("failed to convert signal amount to big.Float")
+	}
 	totalSignalledTokens := big.NewFloat(0)
 	totalStakedTokens := big.NewFloat(0)
 	for _, s := range subgraphDeployments {
@@ -392,6 +424,9 @@ func signals(ctx context.Context, networkSubgraph string, httpClient http.Client
 		subgraphSignalledTokens, ok := new(big.Float).SetString(s.SignalledTokens)
 		if !ok {
 			return errors.New("failed to convert signalled tokens to big.Float")
+		}
+		if subgraphSignalledTokens.Cmp(zero) < 1 {
+			fmt.Println("shitty graph ", s.ID)
 		}
 		totalSignalledTokens = totalSignalledTokens.Add(totalSignalledTokens, subgraphSignalledTokens)
 		subgraphStakedTokens, ok := new(big.Float).SetString(s.StakedTokens)
@@ -407,16 +442,24 @@ func signals(ctx context.Context, networkSubgraph string, httpClient http.Client
 		return numA.Cmp(numB) > 0
 	})
 
-	proportionBaseline := fmt.Sprintf("%.10f", new(big.Float).Quo(totalSignalAmount, totalStakedTokens))
-	fmt.Println("Baseline proportion: ", proportionBaseline)
 	ts := table.NewWriter()
 	ts.SetOutputMirror(os.Stdout)
-	ts.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Subgraph Original Name", "Signal Amount", "%", "Signalled Tokens", "%", "Proportion"})
-	for i, s := range subgraphDeployments {
-		subgraphDeploymentHash, err := utils.SubgraphHexToHash(s.ID)
+	ts.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Subgraph Original Name", "%", "Signalled Tokens", "%", "Proportion", "Free capacity"})
+	subgraphDeploymentsMap := make(map[string]bool)
+	for _, s := range subgraphDeployments {
+		subgraphDeploymentHash, err := s.Hash()
 		if err != nil {
 			return err
 		}
+		subgraphDeploymentsMap[subgraphDeploymentHash] = true
+	}
+	for i, s := range subgraphDeployments {
+		fmt.Println(s.ID)
+		subgraphDeploymentHash, err := s.Hash()
+		if err != nil {
+			return err
+		}
+
 		subgraphSignalAmount, ok := new(big.Float).SetString(s.SignalAmount)
 		if !ok {
 			return errors.New("failed to convert signal amount to big.Int")
@@ -431,20 +474,95 @@ func signals(ctx context.Context, networkSubgraph string, httpClient http.Client
 		}
 		percentageSignalAmount := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount))
 		percentageSignalledTokens := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalledTokens, totalSignalledTokens))
-		proportion := fmt.Sprintf("%.10f", new(big.Float).Quo(subgraphSignalAmount, subgraphStakedTokens))
+
+		signalRatio := fmt.Sprintf("%.20f", new(big.Float).Quo(subgraphSignalledTokens, totalTokensSignalled))
+		signalRatioBigFloat, ok := new(big.Float).SetString(signalRatio)
+		if !ok {
+			return errors.New("failed to convert signal ratio to big.Float")
+		}
+		fmt.Println("subgraphSignalledTokens: ", subgraphSignalledTokens.String(), " totalTokensSignalled:", totalTokensSignalled.String())
+		fmt.Println("subgraphStakedTokens: ", subgraphStakedTokens, " totalTokensAllocated: ", totalTokensAllocated)
+		stakedRatio := fmt.Sprintf("%f", new(big.Float).Quo(subgraphStakedTokens, totalTokensAllocated))
+		stakedRatioBigFloat, ok := new(big.Float).SetString(stakedRatio)
+		if !ok {
+			return errors.New("failed to convert staked ratio to big.Float")
+		}
+		fmt.Println("signalRatio: ", signalRatio, " signalRatioBigFloat: ", signalRatioBigFloat, " stakedRatio: ", stakedRatio, " stakedRatioBigFloat: ", stakedRatioBigFloat)
+		proportion := fmt.Sprintf("%.3f", new(big.Float).Quo(signalRatioBigFloat, stakedRatioBigFloat))
+
+		capacity := new(big.Float).Mul(totalTokensAllocated, signalRatioBigFloat)
+		freeCapacity := new(big.Float).Sub(capacity, subgraphStakedTokens)
+		freeCapacityString := fmt.Sprintf("%f", freeCapacity)
 
 		signalledTokens, err := utils.ToDecimal(s.SignalledTokens, 18)
 		if err != nil {
 			return err
 		}
+
+		freeCapacityTokens, err := utils.ToDecimal(freeCapacityString, 18)
+		if err != nil {
+			return err
+		}
+
+		proportionFloat, err := strconv.ParseFloat(proportion, 32)
+		if err != nil {
+			return err
+		}
+
+		for _, subgraph := range indexingStatuses {
+			if _, ok := subgraphDeploymentsMap[subgraph.Subgraph]; !ok {
+				fmt.Println("subgraph is not in subgraphDeployments:", subgraph.Subgraph)
+				continue
+			}
+
+			if subgraph.Subgraph == subgraphDeploymentHash && !signalledTokens.IsPositive() {
+				fmt.Println(subgraphDeploymentHash, "not worth")
+			}
+			if subgraph.Subgraph == subgraphDeploymentHash && subgraph.Synced && subgraph.Health == "healthy" && proportionFloat > 1 {
+				adviceAllos = append(adviceAllos, struct {
+					hash         string
+					freeCapacity decimal.Decimal
+				}{hash: subgraph.Subgraph, freeCapacity: freeCapacityTokens})
+			}
+		}
+
 		ts.AppendRows([]table.Row{
-			{i, subgraphDeploymentHash, s.OriginalName, s.SignalAmount, percentageSignalAmount, signalledTokens.Round(2).String(), percentageSignalledTokens, proportion},
+			{i, subgraphDeploymentHash, s.OriginalName, percentageSignalAmount, signalledTokens.Round(2).String(), percentageSignalledTokens, proportion, freeCapacityTokens.Round(2).String()},
 		})
 	}
 
 	ts.SetStyle(table.StyleLight)
 	ts.Render()
+	for _, allo := range adviceAllos {
+		if availableStake.Sub(fillCapacity).Sub(allo.freeCapacity).GreaterThanOrEqual(decimal.NewFromInt(0)) {
+			fmt.Printf("%s %s\n", allo.hash, allo.freeCapacity.Round(0).String())
+			fillCapacity = fillCapacity.Add(allo.freeCapacity)
+		} else {
+			if availableStake.Sub(fillCapacity).GreaterThan(decimal.NewFromInt(0)) {
+				fmt.Printf("%s %s\n", allo.hash, availableStake.Sub(fillCapacity).Round(0).String())
+				partialCapacity := availableStake.Sub(fillCapacity)
+				fillCapacity = fillCapacity.Add(partialCapacity)
 
+				fmt.Println("capacity filled")
+				overCapacity = allo.freeCapacity.Sub(partialCapacity)
+				fmt.Printf("%s %s\n", allo.hash, overCapacity.Round(0).String())
+				continue
+			}
+
+			fmt.Printf("%s %s\n", allo.hash, allo.freeCapacity.Round(0).String())
+			overCapacity = overCapacity.Add(allo.freeCapacity)
+
+		}
+	}
+	fmt.Println("Total allocated: ", fillCapacity.Round(0).String())
+	fmt.Println("Over capacity", overCapacity.Round(0).String())
+	fmt.Println("Unused stake left: ", availableStake.Sub(fillCapacity).Round(0).String())
+	for _, subgraph := range indexingStatuses {
+		if _, ok := subgraphDeploymentsMap[subgraph.Subgraph]; !ok {
+			fmt.Println("subgraph is not in subgraphDeployments:", subgraph.Subgraph)
+			continue
+		}
+	}
 	return nil
 }
 
@@ -457,10 +575,10 @@ func getIndexingStatuses(ctx context.Context, indexNode string, httpClient http.
 	}
 	tis := table.NewWriter()
 	tis.SetOutputMirror(os.Stdout)
-	tis.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Chain", "Node ID", "Latest Block", "Chain Head", "Health"})
+	tis.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Chain", "Node ID", "Latest Block", "Chain Head", "Health", "Synced"})
 	for i, is := range indexingStatuses {
 		tis.AppendRows([]table.Row{
-			{i, is.Subgraph, is.Chains[0].Network, is.Node, is.Chains[0].LatestBlock.Number, is.Chains[0].ChainHeadBlock.Number, is.Health},
+			{i, is.Subgraph, is.Chains[0].Network, is.Node, is.Chains[0].LatestBlock.Number, is.Chains[0].ChainHeadBlock.Number, is.Health, is.Synced},
 		})
 	}
 	tis.SetStyle(table.StyleLight)
@@ -516,7 +634,7 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 	indexNodeAPI := graphql.NewClient(indexNode, &httpClient)
 	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
 
-	status, err := gqlClient.GetStatus()
+	status, err := gqlClient.GetStatus("arbitrum-one")
 	if err != nil {
 		return err
 	}
@@ -713,7 +831,7 @@ func closeAllocation(ctx context.Context, ethNode, contractAddress, mnemonic, hd
 		return err
 	}
 
-	balance, err := e.Client.BalanceAt(context.Background(), account.Address, big.NewInt(int64(blockNumber)))
+	balance, err := e.Client.BalanceAt(context.Background(), account.Address, big.NewInt(0).SetUint64(blockNumber))
 	if err != nil {
 		return err
 	}
@@ -774,4 +892,173 @@ func closeAllocation(ctx context.Context, ethNode, contractAddress, mnemonic, hd
 		fmt.Println("\nTransaction sent, txid: ", tx.Hash().String())
 	}
 	return nil
+}
+
+func allocationsAdvice(ctx context.Context, networkSubgraph, indexNode string, stakeAmount decimal.Decimal, httpClient http.Client) error {
+	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
+	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
+	subgraphDeployments, err := subgraphAPIClient.GetSubgraphDeploymentsSignalled()
+	if err != nil {
+		return err
+	}
+	indexNodeAPI := graphql.NewClient(indexNode, &httpClient)
+	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
+
+	indexingStatuses, err := indexNodeAPIClient.GetIndexingStatuses()
+	if err != nil {
+		return err
+	}
+
+	graphNetwork, err := subgraphAPIClient.GetGraphNetwork()
+	if err != nil {
+		return err
+	}
+
+	// tis := table.NewWriter()
+	// tis.SetOutputMirror(os.Stdout)
+	// tis.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Chain", "Node ID", "Latest Block", "Chain Head", "Health", "Synced"})
+	// for i, is := range indexingStatuses {
+	// 	tis.AppendRows([]table.Row{
+	// 		{i, is.Subgraph, is.Chains[0].Network, is.Node, is.Chains[0].LatestBlock.Number, is.Chains[0].ChainHeadBlock.Number, is.Health, is.Synced},
+	// 	})
+	// }
+	// tis.SetStyle(table.StyleLight)
+	// tis.Render()
+
+	subgraphsPool, err := CreateSubgraphsPool(subgraphDeployments, indexingStatuses, graphNetwork, "0")
+	if err != nil {
+		return err
+	}
+	// fmt.Println(len(subgraphsPool))
+	// fmt.Println("staked sum", subgraphsPool.Staked().String())
+	// fmt.Println("available capacity", subgraphsPool.AvailableCapacity().String())
+	// fmt.Println("total capacity", subgraphsPool.TotalCapacity().String())
+	// fmt.Println("ratio", subgraphsPool.Ratio(decimal.NewFromInt(0)))
+	// fmt.Println("ratio+", subgraphsPool.Ratio(stakeAmount))
+	// allocatedSum := decimal.NewFromInt(0)
+
+	// tis := table.NewWriter()
+	// tis.SetOutputMirror(os.Stdout)
+	// tis.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Capacity", "Staked", "Available", "Ratio", "Old Ratio", "New Ratio", "diff", "Amount"})
+	// for i, s := range subgraphsPool {
+	// 	oldRatio := s.StakedTokens.Div(s.Capacity)
+	// 	ratioDiff := subgraphsPool.Ratio(stakeAmount).Sub(oldRatio)
+	// 	allocationAmount := s.Capacity.Mul(ratioDiff)
+	// 	newRatio := s.StakedTokens.Add(allocationAmount).Div(s.Capacity)
+	// 	tis.AppendRows([]table.Row{
+	// 		{i, s.SubgraphHash, s.Capacity.Round(0), s.StakedTokens.Round(0), s.AvailableCapacity.Round(0), s.CurrentRatio.Round(2), oldRatio.Round(2), newRatio.Round(2), ratioDiff.Round(5), allocationAmount.Round(0)},
+	// 	})
+	// 	allocatedSum = allocatedSum.Add(allocationAmount)
+	// }
+	// tis.SetStyle(table.StyleLight)
+	// tis.Render()
+
+	// fmt.Println("allocated:", allocatedSum)
+
+	// var maxOldRatioEntity *SubgraphsPoolEntity
+	// var maxOldRatio decimal.Decimal
+
+	// for _, s := range subgraphsPool {
+	// 	oldRatio := s.StakedTokens.Div(s.Capacity)
+	// 	if oldRatio.GreaterThan(maxOldRatio) {
+	// 		maxOldRatio = oldRatio
+	// 		maxOldRatioEntity = &s
+	// 	}
+	// }
+
+	// if maxOldRatioEntity != nil {
+	// 	fmt.Println("Entity with the highest oldRatio:", maxOldRatioEntity.SubgraphHash)
+	// } else {
+	// 	fmt.Println("subgraphsPool is empty")
+	// }
+
+	// //	disableHighestOldRatio(&subgraphsPool, stakeAmount)
+
+	// fmt.Println("staked sum", subgraphsPool.Staked().String())
+	// fmt.Println("available capacity", subgraphsPool.AvailableCapacity().String())
+	// fmt.Println("total capacity", subgraphsPool.TotalCapacity().String())
+	// fmt.Println("ratio", subgraphsPool.Ratio(decimal.NewFromInt(0)))
+	// fmt.Println("ratio+", subgraphsPool.Ratio(stakeAmount))
+	// tss := table.NewWriter()
+	// tss.SetOutputMirror(os.Stdout)
+	// tss.AppendHeader(table.Row{"#", "Subgraph Deployment ID", "Capacity", "Staked", "Available", "Ratio", "Old Ratio", "New Ratio", "diff", "Amount"})
+
+	// allocatedSum = decimal.NewFromInt(0)
+	// for i, s := range subgraphsPool {
+	// 	if s.Enabled {
+	// 		oldRatio := s.StakedTokens.Div(s.Capacity)
+	// 		ratioDiff := subgraphsPool.Ratio(stakeAmount).Sub(oldRatio)
+	// 		allocationAmount := s.Capacity.Mul(ratioDiff)
+	// 		newRatio := s.StakedTokens.Add(allocationAmount).Div(s.Capacity)
+	// 		subgraphsPool[i].Amount = allocationAmount
+	// 		tss.AppendRows([]table.Row{
+	// 			{i, s.SubgraphHash, s.Capacity.Round(0), s.StakedTokens.Round(0), s.AvailableCapacity.Round(0), s.CurrentRatio.Round(2), oldRatio.Round(2), newRatio.Round(2), ratioDiff.Round(5), allocationAmount.Round(0)},
+	// 		})
+	// 		allocatedSum = allocatedSum.Add(allocationAmount)
+	// 	}
+	// }
+	// tss.SetStyle(table.StyleLight)
+	// tss.Render()
+	// fmt.Println("allocated:", allocatedSum)
+
+	// fmt.Println(len(subgraphsPool))
+
+	// for _, s := range subgraphsPool {
+	// 	if s.Enabled {
+	// 		fmt.Println(s.SubgraphHash, s.Amount.Round(0))
+	// 	}
+	// }
+
+	fmt.Println("Allocations advice:")
+	optimizedPool, tokensLeft := AllocateTokens(subgraphsPool, stakeAmount)
+	PrintPool(optimizedPool)
+	allocatedSum := decimal.NewFromInt(0)
+	for _, s := range optimizedPool {
+		fmt.Println(s.SubgraphHash, s.Amount.Round(0))
+		allocatedSum = allocatedSum.Add(s.Amount)
+	}
+	fmt.Println("tokens left", tokensLeft)
+	fmt.Println("allocated:", allocatedSum)
+	return nil
+}
+
+func disableHighestOldRatio(subgraphsPool *SubgraphsPool, stakeAmount decimal.Decimal) {
+	for {
+		if len(*subgraphsPool) == 0 {
+			return
+		}
+
+		// Find the entity with the highest oldRatio
+		var maxOldRatioEntity *SubgraphsPoolEntity
+		var maxOldRatio decimal.Decimal
+		for i, s := range *subgraphsPool {
+			if s.Enabled {
+				oldRatio := s.StakedTokens.Div(s.Capacity)
+				if oldRatio.GreaterThan(maxOldRatio) {
+					maxOldRatio = oldRatio
+					maxOldRatioEntity = &(*subgraphsPool)[i]
+				}
+			}
+		}
+
+		// If no entity was found, return
+		if maxOldRatioEntity == nil {
+			return
+		}
+
+		// Calculate newRatio
+		oldRatio := maxOldRatioEntity.StakedTokens.Div(maxOldRatioEntity.Capacity)
+		ratioDiff := subgraphsPool.Ratio(stakeAmount).Sub(oldRatio)
+		allocationAmount := maxOldRatioEntity.Capacity.Mul(ratioDiff)
+		newRatio := maxOldRatioEntity.StakedTokens.Add(allocationAmount).Div(maxOldRatioEntity.Capacity)
+
+		// If oldRatio is bigger than newRatio, set Enabled to false and continue the loop
+		if oldRatio.GreaterThan(newRatio) {
+			maxOldRatioEntity.Enabled = false
+			continue
+		}
+
+		// If oldRatio is not bigger than newRatio, break the loop
+		break
+	}
 }

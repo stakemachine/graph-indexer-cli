@@ -11,6 +11,7 @@ import (
 
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/shopspring/decimal"
 )
 
 func main() {
@@ -167,7 +168,7 @@ func main() {
 		ShortHelp:   "Manage costing for subgraphs",
 		Subcommands: []*ffcli.Command{costSet, costGet},
 		Exec: func(context.Context, []string) error {
-			fmt.Printf(*agentHost)
+			fmt.Printf("Agent host: %s\n", *agentHost)
 			return flag.ErrHelp
 		},
 	}
@@ -177,7 +178,7 @@ func main() {
 		ShortUsage: "graph-indexer signals",
 		ShortHelp:  "Get list of subgraph deployments with signals",
 		Exec: func(ctx context.Context, args []string) error {
-			return signals(ctx, *networkSubgraph, httpClient)
+			return signals(ctx, *networkSubgraph, *indexNode, httpClient)
 		},
 	}
 
@@ -206,7 +207,21 @@ func main() {
 			return getPoi(ctx, *ethNode, *indexNode, *networkSubgraph, args[0], args[1], args[2], httpClient)
 		},
 	}
-
+	allocationsAdvice := &ffcli.Command{
+		Name:       "advice",
+		ShortUsage: "graph-indexer allocations advice <stakeAmount>",
+		ShortHelp:  "Allocations advice with specified stake amount",
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) < 1 {
+				return fmt.Errorf("stake amount is required")
+			}
+			stakeAmount, err := decimal.NewFromString(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid stake amount: %w", err)
+			}
+			return allocationsAdvice(ctx, *networkSubgraph, *indexNode, stakeAmount, httpClient)
+		},
+	}
 	allocationsClose := &ffcli.Command{
 		Name:       "close",
 		ShortUsage: "graph-indexer allocations close",
@@ -249,9 +264,9 @@ func main() {
 		Name:        "allocations",
 		ShortUsage:  "graph-indxer allocations [<arg> ...]",
 		ShortHelp:   "Get info and manage allocations ",
-		Subcommands: []*ffcli.Command{allocationsGet, allocationsClose},
+		Subcommands: []*ffcli.Command{allocationsGet, allocationsClose, allocationsAdvice},
 		Exec: func(context.Context, []string) error {
-			fmt.Printf(*agentHost)
+			fmt.Printf("Agent host: %s\n", *agentHost)
 			return flag.ErrHelp
 		},
 	}

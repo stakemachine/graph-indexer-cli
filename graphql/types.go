@@ -123,7 +123,9 @@ type Indexer struct {
 }
 
 type GraphNetwork struct {
-	CurrentEpoch int
+	CurrentEpoch         int
+	TotalTokensAllocated string `json:"totalTokensAllocated"`
+	TotalTokensSignalled string `json:"totalTokensSignalled"`
 }
 
 type SubgraphDeployment struct {
@@ -158,6 +160,7 @@ type IndexingStatus struct {
 	Node       string     `json:"node"`
 	Subgraph   string     `json:"subgraph"`
 	Health     string     `json:"health"`
+	Synced     bool       `json:"synced"`
 }
 
 type ProofOfIndexing string

@@ -53,7 +53,10 @@ func TestSubgraphHexToHash(t *testing.T) {
 
 func FuzzSubgraphHexToHash(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
-		SubgraphHexToHash(s)
+		_, err := SubgraphHexToHash(s)
+		if err != nil {
+			t.Skip() // Skip invalid inputs
+		}
 	})
 }
 
@@ -113,7 +116,10 @@ func TestSubgraphHashToHex(t *testing.T) {
 
 func FuzzSubgraphHashToHex(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
-		SubgraphHashToHex(s)
+		_, err := SubgraphHashToHex(s)
+		if err != nil {
+			t.Skip() // Skip invalid inputs
+		}
 	})
 }
 
@@ -173,7 +179,7 @@ func TestCheckIdentifier(t *testing.T) {
 
 func FuzzCheckIdentifier(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
-		CheckIdentifier(s)
+		_ = CheckIdentifier(s) // Explicitly acknowledge return value
 	})
 }
 

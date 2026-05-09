@@ -1,8 +1,9 @@
 module github.com/stakemachine/graph-indexer-cli
 
-go 1.24
+go 1.25
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/jedib0t/go-pretty/v6 v6.6.6
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
@@ -13,10 +14,16 @@ require (
 )
 
 require (
+	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
+	github.com/kisielk/errcheck v1.9.0 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20231108232855-2478ac86f678 // indirect
+	golang.org/x/telemetry v0.0.0-20240522233618-39ace7a40ae7 // indirect
 	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/vuln v1.1.4 // indirect
+	honnef.co/go/tools v0.6.0 // indirect
 )
 
 require (
@@ -44,9 +51,15 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81 // indirect
-	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.30.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
+)
+
+tool (
+	github.com/kisielk/errcheck
+	golang.org/x/vuln/cmd/govulncheck
+	honnef.co/go/tools/cmd/staticcheck
 )
