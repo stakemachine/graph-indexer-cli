@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
 	"github.com/shurcooL/graphql"
 	"github.com/stakemachine/graph-indexer-cli/utils"
@@ -40,7 +39,6 @@ func (gs *GraphService) GetStatus(protocolNetwork string) (Status, error) {
 		q.IndexingRules,
 		q.IndexerAllocations,
 	}
-	spew.Dump(status)
 	return status, nil
 }
 

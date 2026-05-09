@@ -3,7 +3,6 @@ module github.com/stakemachine/graph-indexer-cli
 go 1.25
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/ethereum/go-ethereum v1.17.2
 	github.com/jedib0t/go-pretty/v6 v6.7.10
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
