@@ -51,6 +51,15 @@ func TestSubgraphHexToHash(t *testing.T) {
 	}
 }
 
+func FuzzSubgraphHexToHash(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		_, err := SubgraphHexToHash(s)
+		if err != nil {
+			t.Skip() // Skip invalid inputs
+		}
+	})
+}
+
 func TestSubgraphHashToHex(t *testing.T) {
 	type args struct {
 		s string
@@ -103,4 +112,133 @@ func TestSubgraphHashToHex(t *testing.T) {
 			}
 		})
 	}
+}
+
+func FuzzSubgraphHashToHex(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		_, err := SubgraphHashToHex(s)
+		if err != nil {
+			t.Skip() // Skip invalid inputs
+		}
+	})
+}
+
+func TestCheckIdentifier(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "testing empty",
+			args: args{
+				s: "",
+			},
+			want: false,
+		},
+		{
+			name: "testing correct hash",
+			args: args{
+				s: "QmRhYzT8HEZ9LziQhP6JfNfd4co9A7muUYQhPMJsMUojSF",
+			},
+			want: false,
+		},
+		{
+			name: "testing wrong hash",
+			args: args{
+				s: "QmR",
+			},
+			want: false,
+		},
+		{
+			name: "testing correct hex",
+			args: args{
+				s: "0x31edcacc9a53bc8ab4be2eeb0d873409da4c4228cb2d60e4243bd3b4e8af7500",
+			},
+			want: true,
+		},
+		{
+			name: "testing incorrect hex",
+			args: args{
+				s: "0x31edcacc9a53bc8ab4be2eeb0d873409da4c4228cb2d60e4243b232lkjd3b4e8af7500",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CheckIdentifier(tt.args.s); got != tt.want {
+				t.Errorf("CheckIdentifier() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func FuzzCheckIdentifier(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		_ = CheckIdentifier(s) // Explicitly acknowledge return value
+	})
+}
+
+func TestReturnIdentifier(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "testing empty",
+			args: args{
+				s: "",
+			},
+			want: "",
+		},
+		{
+			name: "testing correct hash",
+			args: args{
+				s: "QmRhYzT8HEZ9LziQhP6JfNfd4co9A7muUYQhPMJsMUojSF",
+			},
+			want: "0x31edcacc9a53bc8ab4be2eeb0d873409da4c4228cb2d60e4243bd3b4e8af7500",
+		},
+		{
+			name: "testing wrong hash",
+			args: args{
+				s: "QmR",
+			},
+			want: "",
+		},
+		{
+			name: "testing correct hex",
+			args: args{
+				s: "0x31edcacc9a53bc8ab4be2eeb0d873409da4c4228cb2d60e4243bd3b4e8af7500",
+			},
+			want: "0x31edcacc9a53bc8ab4be2eeb0d873409da4c4228cb2d60e4243bd3b4e8af7500",
+		},
+		{
+			name: "testing incorrect hex",
+			args: args{
+				s: "0x31edcacc9a53bc8ab4be2eeb0d873409da4c4228cb2d60e4243b232lkjd3b4e8af7500",
+			},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, err := ReturnIdentifier(tt.args.s); got != tt.want && err != nil {
+				t.Errorf("ReturnIdentifier() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func FuzzReturnIdentifier(f *testing.F) {
+	f.Fuzz(func(t *testing.T, s string) {
+		ReturnIdentifier(s)
+	})
 }

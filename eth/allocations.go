@@ -67,7 +67,7 @@ func (es *Service) CloseAllocation(privateKeyHex, address, contract, alloID, poi
 	}
 	transactOpts.From = addressFrom
 	transactOpts.NoSend = true
-	transactOpts.Nonce = big.NewInt(int64(nonce))
+	transactOpts.Nonce = new(big.Int).SetUint64(nonce)
 	transactOpts.GasFeeCap = gasPrice
 	transactOpts.GasTipCap = gasTipCap
 	transactOpts.GasLimit = 300000
