@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 	"testing"
@@ -43,7 +44,11 @@ func TestGetWalletAccount(t *testing.T) {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						err = r.(error)
+						if e, ok := r.(error); ok {
+							err = e
+						} else {
+							err = fmt.Errorf("panic: %v", r)
+						}
 					}
 				}()
 				account, privateKey, e := GetWalletAccount(tc.mnemonic, tc.hdPath)
@@ -308,7 +313,11 @@ func TestWalletDerivation(t *testing.T) {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						err = r.(error)
+						if e, ok := r.(error); ok {
+							err = e
+						} else {
+							err = fmt.Errorf("panic: %v", r)
+						}
 					}
 				}()
 

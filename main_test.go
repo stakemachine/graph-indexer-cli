@@ -86,7 +86,7 @@ func TestGetIndexingRule(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := newTestClient(func(req *http.Request) (*http.Response, error) {
+			client := newTestClient(func(_ *http.Request) (*http.Response, error) {
 				if tc.shouldError {
 					return nil, &mockHTTPError{message: "test error"}
 				}
@@ -430,10 +430,13 @@ func TestCreateSubgraphsPool(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			pool, _ := CreateSubgraphsPool(tc.subgraphDeployments, tc.indexingStatuses, mgmt.GraphNetwork{
+			pool, err := CreateSubgraphsPool(tc.subgraphDeployments, tc.indexingStatuses, mgmt.GraphNetwork{
 				TotalTokensSignalled: "1000",
 				TotalTokensAllocated: "500",
 			}, tc.minSignal)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if len(pool) != tc.expectedPoolSize {
 				t.Errorf("Expected pool size %d, got %d", tc.expectedPoolSize, len(pool))
 			}

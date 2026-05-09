@@ -2,7 +2,7 @@ FROM golang:1.26.3-alpine AS builder
 
 ARG TARGETARCH=arm64
 
-RUN wget https://github.com/upx/upx/releases/download/v5.1.1/upx-5.0.2-${TARGETARCH}_linux.tar.xz -O /tmp/upx.tar.xz && \
+RUN wget https://github.com/upx/upx/releases/download/v5.1.1/upx-5.1.1-${TARGETARCH}_linux.tar.xz -O /tmp/upx.tar.xz && \
     tar -xJOf /tmp/upx.tar.xz upx-5.1.1-${TARGETARCH}_linux/upx > /usr/local/bin/upx && \
     chmod +x /usr/local/bin/upx
 

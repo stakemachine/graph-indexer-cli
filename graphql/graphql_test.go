@@ -21,7 +21,7 @@ type mockQuerier struct {
 	err      error
 }
 
-func (m *mockQuerier) Query(ctx context.Context, q interface{}, variables map[string]interface{}) error {
+func (m *mockQuerier) Query(_ context.Context, q interface{}, _ map[string]interface{}) error {
 	if m.err != nil {
 		return m.err
 	}

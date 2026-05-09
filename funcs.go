@@ -153,7 +153,7 @@ func printCostModels(costModels []mgmt.CostModel) error {
 	return nil
 }
 
-func status(ctx context.Context, agentHost string, networkSubgraph string, httpClient http.Client) error {
+func status(_ context.Context, agentHost string, networkSubgraph string, httpClient http.Client) error {
 	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 
@@ -259,7 +259,7 @@ func status(ctx context.Context, agentHost string, networkSubgraph string, httpC
 	return nil
 }
 
-func getIndexingRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
+func getIndexingRule(_ context.Context, agentHost string, args []string, httpClient http.Client) error {
 	if len(args) != 1 {
 		return errors.New("rules get requires one hash argument")
 	}
@@ -289,7 +289,7 @@ func getIndexingRule(ctx context.Context, agentHost string, args []string, httpC
 	return nil
 }
 
-func setIndexingRule(ctx context.Context, agentHost string, deploymentID string, args []string, httpClient http.Client) error {
+func setIndexingRule(_ context.Context, agentHost string, deploymentID string, args []string, httpClient http.Client) error {
 	mgmtAPI := graphql.NewClient(agentHost, &httpClient)
 	gqlClient := mgmt.GraphService{Client: mgmtAPI}
 	err := gqlClient.SetIndexingRule(deploymentID, args)
@@ -309,7 +309,7 @@ func setIndexingRule(ctx context.Context, agentHost string, deploymentID string,
 	return nil
 }
 
-func deleteIndexingRule(ctx context.Context, agentHost string, args []string, httpClient http.Client) error {
+func deleteIndexingRule(_ context.Context, agentHost string, args []string, httpClient http.Client) error {
 	if len(args) != 1 {
 		return errors.New("rules get requires one hash argument")
 	}
@@ -373,7 +373,67 @@ func setCostModel(agentHost string, deploymentID string, args []string, httpClie
 	return nil
 }
 
-func signals(ctx context.Context, networkSubgraph, indexNode string, httpClient http.Client) error {
+type signalTotals struct {
+	signalAmount    *big.Float
+	signalledTokens *big.Float
+	stakedTokens    *big.Float
+}
+
+func sumSubgraphSignals(deployments []mgmt.SubgraphDeployment) (signalTotals, error) {
+	one, _ := new(big.Float).SetString("1")
+	totals := signalTotals{
+		signalAmount:    big.NewFloat(0),
+		signalledTokens: big.NewFloat(0),
+		stakedTokens:    big.NewFloat(0),
+	}
+	for _, s := range deployments {
+		signal, ok := new(big.Float).SetString(s.SignalAmount)
+		if !ok {
+			return totals, errors.New("failed to convert signal amount to big.Float")
+		}
+		totals.signalAmount.Add(totals.signalAmount, signal)
+
+		signalled, ok := new(big.Float).SetString(s.SignalledTokens)
+		if !ok {
+			return totals, errors.New("failed to convert signalled tokens to big.Float")
+		}
+		if signalled.Cmp(one) < 1 {
+			fmt.Println("shitty graph ", s.ID)
+		}
+		totals.signalledTokens.Add(totals.signalledTokens, signalled)
+
+		staked, ok := new(big.Float).SetString(s.StakedTokens)
+		if !ok {
+			return totals, errors.New("failed to convert staked tokens to big.Float")
+		}
+		totals.stakedTokens.Add(totals.stakedTokens, staked)
+	}
+	return totals, nil
+}
+
+type subgraphMetrics struct {
+	signalAmount    *big.Float
+	signalledTokens *big.Float
+	stakedTokens    *big.Float
+}
+
+func parseSubgraphMetrics(s mgmt.SubgraphDeployment) (subgraphMetrics, error) {
+	signal, ok := new(big.Float).SetString(s.SignalAmount)
+	if !ok {
+		return subgraphMetrics{}, errors.New("failed to convert signal amount to big.Int")
+	}
+	signalled, ok := new(big.Float).SetString(s.SignalledTokens)
+	if !ok {
+		return subgraphMetrics{}, errors.New("failed to convert signal amount to big.Int")
+	}
+	staked, ok := new(big.Float).SetString(s.StakedTokens)
+	if !ok {
+		return subgraphMetrics{}, errors.New("failed to convert signal amount to big.Int")
+	}
+	return subgraphMetrics{signalAmount: signal, signalledTokens: signalled, stakedTokens: staked}, nil
+}
+
+func signals(_ context.Context, networkSubgraph, indexNode string, httpClient http.Client) error {
 	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
 	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
 	subgraphDeployments, err := subgraphAPIClient.GetSubgraphDeploymentsSignalled()
@@ -408,33 +468,13 @@ func signals(ctx context.Context, networkSubgraph, indexNode string, httpClient 
 		return errors.New("failed to convert signal amount to big.Float")
 	}
 	fmt.Println("graphNetwork: ", graphNetwork.TotalTokensAllocated, graphNetwork.TotalTokensSignalled)
-	totalSignalAmount := big.NewFloat(0)
-	zero, ok := new(big.Float).SetString("1")
-	if !ok {
-		return errors.New("failed to convert signal amount to big.Float")
+
+	totals, err := sumSubgraphSignals(subgraphDeployments)
+	if err != nil {
+		return err
 	}
-	totalSignalledTokens := big.NewFloat(0)
-	totalStakedTokens := big.NewFloat(0)
-	for _, s := range subgraphDeployments {
-		subgraphSignalAmount, ok := new(big.Float).SetString(s.SignalAmount)
-		if !ok {
-			return errors.New("failed to convert signal amount to big.Float")
-		}
-		totalSignalAmount = totalSignalAmount.Add(totalSignalAmount, subgraphSignalAmount)
-		subgraphSignalledTokens, ok := new(big.Float).SetString(s.SignalledTokens)
-		if !ok {
-			return errors.New("failed to convert signalled tokens to big.Float")
-		}
-		if subgraphSignalledTokens.Cmp(zero) < 1 {
-			fmt.Println("shitty graph ", s.ID)
-		}
-		totalSignalledTokens = totalSignalledTokens.Add(totalSignalledTokens, subgraphSignalledTokens)
-		subgraphStakedTokens, ok := new(big.Float).SetString(s.StakedTokens)
-		if !ok {
-			return errors.New("failed to convert signalled tokens to big.Float")
-		}
-		totalStakedTokens = totalStakedTokens.Add(totalStakedTokens, subgraphStakedTokens)
-	}
+	totalSignalAmount := totals.signalAmount
+	totalSignalledTokens := totals.signalledTokens
 
 	sort.SliceStable(subgraphDeployments, func(i, j int) bool {
 		numA, _ := new(big.Int).SetString(subgraphDeployments[i].SignalAmount, 10)
@@ -460,18 +500,13 @@ func signals(ctx context.Context, networkSubgraph, indexNode string, httpClient 
 			return err
 		}
 
-		subgraphSignalAmount, ok := new(big.Float).SetString(s.SignalAmount)
-		if !ok {
-			return errors.New("failed to convert signal amount to big.Int")
+		m, err := parseSubgraphMetrics(s)
+		if err != nil {
+			return err
 		}
-		subgraphSignalledTokens, ok := new(big.Float).SetString(s.SignalledTokens)
-		if !ok {
-			return errors.New("failed to convert signal amount to big.Int")
-		}
-		subgraphStakedTokens, ok := new(big.Float).SetString(s.StakedTokens)
-		if !ok {
-			return errors.New("failed to convert signal amount to big.Int")
-		}
+		subgraphSignalAmount := m.signalAmount
+		subgraphSignalledTokens := m.signalledTokens
+		subgraphStakedTokens := m.stakedTokens
 		percentageSignalAmount := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalAmount, totalSignalAmount))
 		percentageSignalledTokens := fmt.Sprintf("%.2f", new(big.Float).Quo(subgraphSignalledTokens, totalSignalledTokens))
 
@@ -566,7 +601,7 @@ func signals(ctx context.Context, networkSubgraph, indexNode string, httpClient 
 	return nil
 }
 
-func getIndexingStatuses(ctx context.Context, indexNode string, httpClient http.Client) error {
+func getIndexingStatuses(_ context.Context, indexNode string, httpClient http.Client) error {
 	indexNodeAPI := graphql.NewClient(indexNode, &httpClient)
 	indexNodeAPIClient := mgmt.GraphService{Client: indexNodeAPI}
 	indexingStatuses, err := indexNodeAPIClient.GetIndexingStatuses()
@@ -746,7 +781,7 @@ func comparePoi(ctx context.Context, agentHost, indexNode, ethNode, networkSubgr
 	return nil
 }
 
-func getAllocation(ctx context.Context, ethNode, contractAddress, allocationID string) error {
+func getAllocation(_ context.Context, ethNode, contractAddress, allocationID string) error {
 	ethClient, err := ethclient.Dial(ethNode)
 	if err != nil {
 		return err
@@ -805,7 +840,7 @@ func getAllocation(ctx context.Context, ethNode, contractAddress, allocationID s
 	return nil
 }
 
-func closeAllocation(ctx context.Context, ethNode, contractAddress, mnemonic, hdWalletPath, allocationID, poi string) error {
+func closeAllocation(_ context.Context, ethNode, contractAddress, mnemonic, hdWalletPath, allocationID, poi string) error {
 	if (len(poi) != 3) && (len(poi) != 66) {
 		return errors.New("invalid POI provided")
 	}
@@ -894,7 +929,7 @@ func closeAllocation(ctx context.Context, ethNode, contractAddress, mnemonic, hd
 	return nil
 }
 
-func allocationsAdvice(ctx context.Context, networkSubgraph, indexNode string, stakeAmount decimal.Decimal, httpClient http.Client) error {
+func allocationsAdvice(_ context.Context, networkSubgraph, indexNode string, stakeAmount decimal.Decimal, httpClient http.Client) error {
 	subgraphAPI := graphql.NewClient(networkSubgraph, &httpClient)
 	subgraphAPIClient := mgmt.GraphService{Client: subgraphAPI}
 	subgraphDeployments, err := subgraphAPIClient.GetSubgraphDeploymentsSignalled()
@@ -1020,45 +1055,4 @@ func allocationsAdvice(ctx context.Context, networkSubgraph, indexNode string, s
 	fmt.Println("tokens left", tokensLeft)
 	fmt.Println("allocated:", allocatedSum)
 	return nil
-}
-
-func disableHighestOldRatio(subgraphsPool *SubgraphsPool, stakeAmount decimal.Decimal) {
-	for {
-		if len(*subgraphsPool) == 0 {
-			return
-		}
-
-		// Find the entity with the highest oldRatio
-		var maxOldRatioEntity *SubgraphsPoolEntity
-		var maxOldRatio decimal.Decimal
-		for i, s := range *subgraphsPool {
-			if s.Enabled {
-				oldRatio := s.StakedTokens.Div(s.Capacity)
-				if oldRatio.GreaterThan(maxOldRatio) {
-					maxOldRatio = oldRatio
-					maxOldRatioEntity = &(*subgraphsPool)[i]
-				}
-			}
-		}
-
-		// If no entity was found, return
-		if maxOldRatioEntity == nil {
-			return
-		}
-
-		// Calculate newRatio
-		oldRatio := maxOldRatioEntity.StakedTokens.Div(maxOldRatioEntity.Capacity)
-		ratioDiff := subgraphsPool.Ratio(stakeAmount).Sub(oldRatio)
-		allocationAmount := maxOldRatioEntity.Capacity.Mul(ratioDiff)
-		newRatio := maxOldRatioEntity.StakedTokens.Add(allocationAmount).Div(maxOldRatioEntity.Capacity)
-
-		// If oldRatio is bigger than newRatio, set Enabled to false and continue the loop
-		if oldRatio.GreaterThan(newRatio) {
-			maxOldRatioEntity.Enabled = false
-			continue
-		}
-
-		// If oldRatio is not bigger than newRatio, break the loop
-		break
-	}
 }
