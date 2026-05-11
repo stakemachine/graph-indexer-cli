@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/ethereum/go-ethereum v1.17.2
 	github.com/jedib0t/go-pretty/v6 v6.7.10
-	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
+	github.com/miguelmota/go-ethereum-hdwallet v0.1.3
 	github.com/mr-tron/base58 v1.2.0
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/shopspring/decimal v1.3.1
@@ -15,8 +15,10 @@ require (
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
 	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20251001021608-1fe7b43fc4d6 // indirect
-	github.com/btcsuite/btcd v0.21.0-beta // indirect
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
+	github.com/btcsuite/btcd v0.24.0 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
+	github.com/btcsuite/btcd/btcutil v1.1.5 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/crate-crypto/go-eth-kzg v1.5.0 // indirect
 	github.com/ethereum/c-kzg-4844/v2 v2.1.6 // indirect
