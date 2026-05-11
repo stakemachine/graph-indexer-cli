@@ -6,7 +6,7 @@ require (
 	github.com/ethereum/go-ethereum v1.17.2
 	github.com/jedib0t/go-pretty/v6 v6.7.10
 	github.com/miguelmota/go-ethereum-hdwallet v0.1.1
-	github.com/mr-tron/base58 v1.2.0
+	github.com/mr-tron/base58 v1.3.0
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
